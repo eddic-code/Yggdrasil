@@ -111,6 +111,11 @@ namespace Yggdrasil
 
         }
 
+        public void OnCompleted(IDiscardable builder, Action continuation)
+        {
+
+        }
+
         public void OnCompleted(Action continuation)
         {
             Manager.OnCompleted(continuation);

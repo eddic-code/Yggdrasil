@@ -1,6 +1,6 @@
 ﻿namespace Yggdrasil
 {
-    internal interface IDiscardable
+    public interface IDiscardable
     {
         void Discard();
     }
