@@ -5,14 +5,25 @@ using System.Runtime.CompilerServices;
 
 namespace Yggdrasil
 {
-    public class CoroutineMethodBuilder<T>
+    public class CoroutineMethodBuilder<T> : IDiscardable
     {
+        private static readonly ConcurrentStack<CoroutineMethodBuilder<T>> _pool = new ConcurrentStack<CoroutineMethodBuilder<T>>();
+
         private IAsyncStateMachine _stateMachine;
         private Coroutine<T> _coroutine;
+        private bool _isDiscarded;
 
         public static CoroutineMethodBuilder<T> Create()
         {
-            return new CoroutineMethodBuilder<T>();
+            // We pool method builders to avoid allocations.
+            if (!_pool.TryPop(out var builder))
+            {
+                builder = new CoroutineMethodBuilder<T>();
+            }
+
+            builder._isDiscarded = false;
+
+            return builder;
         }
 
         public void Start<TStateMachine>(ref TStateMachine stateMachine) where TStateMachine : IAsyncStateMachine
@@ -26,14 +37,20 @@ namespace Yggdrasil
             _stateMachine = stateMachine;
         }
 
+        // Last call made to the builder.
         public void SetException(Exception exception)
         {
             _coroutine.SetException(exception);
+
+            Discard();
         }
 
+        // Last call made to the builder.
         public void SetResult(T result)
         {
             _coroutine.SetResult(result);
+
+            Discard();
         }
 
         public void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
@@ -64,15 +81,43 @@ namespace Yggdrasil
         {
             _stateMachine.MoveNext();
         }
+
+        public void Discard()
+        {
+            if (_isDiscarded) { return; }
+            _isDiscarded = true;
+
+            _coroutine = null;
+
+            // Should we null the state machine too?
+            // It's an object when in Debug, a struct when in Release.
+
+            #if DEBUG
+            _stateMachine = null;
+            #endif
+
+            _pool.Push(this);
+        }
     }
 
-    public class CoroutineMethodBuilder
+    public class CoroutineMethodBuilder : IDiscardable
     {
+        private static readonly ConcurrentStack<CoroutineMethodBuilder> _pool = new ConcurrentStack<CoroutineMethodBuilder>();
+
         private IAsyncStateMachine _stateMachine;
+        private bool _isDiscarded;
 
         public static CoroutineMethodBuilder Create()
         {
-            return new CoroutineMethodBuilder();
+            // We pool method builders to avoid allocations.
+            if (!_pool.TryPop(out var builder))
+            {
+                builder = new CoroutineMethodBuilder();
+            }
+
+            builder._isDiscarded = false;
+
+            return builder;
         }
 
         public void Start<TStateMachine>(ref TStateMachine stateMachine) where TStateMachine : IAsyncStateMachine
@@ -86,14 +131,18 @@ namespace Yggdrasil
             _stateMachine = stateMachine;
         }
 
+        // Last call made to the builder.
         public void SetException(Exception exception)
         {
             CoroutineManager.CurrentInstance.SetException(exception);
+
+            Discard();
         }
 
+        // Last call made to the builder.
         public void SetResult()
         {
-            
+            Discard();
         }
 
         public void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
@@ -117,6 +166,21 @@ namespace Yggdrasil
         public void MoveNext()
         {
             _stateMachine.MoveNext();
+        }
+
+        public void Discard()
+        {
+            if (_isDiscarded) { return; }
+            _isDiscarded = true;
+
+            // Should we null the state machine too?
+            // It's an object when in Debug, a struct when in Release.
+
+            #if DEBUG
+            _stateMachine = null;
+            #endif
+
+            _pool.Push(this);
         }
     }
 }

@@ -7,22 +7,24 @@ namespace Yggdrasil
     // The awaitable task type that also acts as its awaiter.
     // We recycle the generic types to reduce allocations.
     [AsyncMethodBuilder(typeof(CoroutineMethodBuilder<>))]
-    public class Coroutine<T> : ICriticalNotifyCompletion, INotifyCompletion
+    public class Coroutine<T> : ICriticalNotifyCompletion, INotifyCompletion, IDiscardable
     {
-        private static readonly ConcurrentStack<Coroutine<T>> _coroutinePool = new ConcurrentStack<Coroutine<T>>();
+        private static readonly ConcurrentStack<Coroutine<T>> _pool = new ConcurrentStack<Coroutine<T>>();
+
+        private bool _isDiscarded;
 
         public T Result;
         public CoroutineManager Manager;
 
         public static Coroutine<T> Create(CoroutineManager manager)
         {
-            if (!_coroutinePool.TryPop(out var coroutine))
+            if (!_pool.TryPop(out var coroutine))
             {
                 coroutine = new Coroutine<T>(manager);
             }
 
-            coroutine.Result = default;
             coroutine.Manager = manager;
+            coroutine._isDiscarded = false;
 
             return coroutine;
         }
@@ -63,9 +65,20 @@ namespace Yggdrasil
         {
             Manager.OnCompleted(continuation);
         }
+
+        public void Discard()
+        {
+            if (_isDiscarded) { return; }
+            _isDiscarded = true;
+
+            Result = default;
+            Manager = null;
+
+            _pool.Push(this);
+        }
     }
 
-    // Doesn't need recycling since there's only one instance created per manager that gets reused.
+    // No need to recycle this since there's only one instance per manager that gets reused.
     [AsyncMethodBuilder(typeof(CoroutineMethodBuilder))]
     public class Coroutine : ICriticalNotifyCompletion, INotifyCompletion
     {

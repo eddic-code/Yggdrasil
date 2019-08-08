@@ -94,6 +94,92 @@ namespace Yggdrasil.Tests
         }
 
         [TestMethod]
+        public void MultipleCoroutinesTest()
+        {
+            var manager = new CoroutineManager();
+            var node = new MultipleCoroutinesTestNode(manager);
+            var stages = new Queue<string>();
+
+            node.Stages = stages;
+            manager.Root = node;
+
+            stages.Enqueue("TICK");
+            manager.Tick();
+
+            var sequence = new List<string> { "TICK", "1A", "3A: 5" };
+            Assert.IsTrue(stages.SequenceEqual(sequence));
+
+            stages.Enqueue("TICK");
+            manager.Tick();
+
+            sequence.AddRange(new[] { "TICK", "3B: 7", "1B", "2A"});
+            Assert.IsTrue(stages.SequenceEqual(sequence));
+
+            stages.Enqueue("TICK");
+            manager.Tick();
+
+            sequence.AddRange(new[] { "TICK", "2B", "1C: 10", "3A: 10" });
+            Assert.IsTrue(stages.SequenceEqual(sequence));
+
+            stages.Enqueue("TICK");
+            manager.Tick();
+
+            sequence.AddRange(new[] { "TICK", "3B: 12", "1D"});
+            Assert.IsTrue(stages.SequenceEqual(sequence));
+        }
+
+        private class MultipleCoroutinesTestNode : Node
+        {
+            public Queue<string> Stages;
+
+            public MultipleCoroutinesTestNode(CoroutineManager tree) : base(tree)
+            {
+
+            }
+
+            public override async Coroutine Tick()
+            {
+                Stages.Enqueue("1A");
+
+                await Method3(5);
+
+                Stages.Enqueue("1B");
+
+                var result = await Method2();
+
+                Stages.Enqueue($"1C: {result}");
+
+                await Method3(result);
+
+                Stages.Enqueue("1D");
+            }
+
+            private async Coroutine<int> Method2()
+            {
+                Stages.Enqueue("2A");
+
+                await Yield;
+
+                Stages.Enqueue("2B");
+
+                return 10;
+            }
+
+            private async Coroutine Method3(int value)
+            {
+                Stages.Enqueue($"3A: {value}");
+
+                value += 1;
+
+                await Yield;
+
+                value += 1;
+
+                Stages.Enqueue($"3B: {value}");
+            }
+        }
+
+        [TestMethod]
         public void ContinuationLoopTest()
         {
             var manager = new CoroutineManager();
@@ -118,7 +204,7 @@ namespace Yggdrasil.Tests
             stages.Enqueue("TICK");
             manager.Tick();
 
-            sequence.AddRange(new[] { "TICK", "3B", "2Loop: TRUE", "3A"});
+            sequence.AddRange(new[] { "TICK", "3B", "2Loop: TRUE", "3A" });
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
@@ -130,7 +216,7 @@ namespace Yggdrasil.Tests
             stages.Enqueue("TICK");
             manager.Tick();
 
-            sequence.AddRange(new[] { "TICK", "3B", "2Loop: TRUE", "2C", "1Loop: 1", "2A"});
+            sequence.AddRange(new[] { "TICK", "3B", "2Loop: TRUE", "2C", "1Loop: 1", "2A" });
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
@@ -177,7 +263,7 @@ namespace Yggdrasil.Tests
             {
                 Stages.Enqueue("1A");
 
-                for(var i = 0; i < 2; i++)
+                for (var i = 0; i < 2; i++)
                 {
                     var result = await Method2(i);
                     Stages.Enqueue($"1Loop: {result}");

@@ -11,6 +11,8 @@
             _manager = tree;
         }
 
+        public string Guid { get; }
+
         public virtual string Name { get; set; }
 
         public abstract Coroutine Tick();
