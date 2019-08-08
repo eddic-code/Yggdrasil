@@ -5,7 +5,7 @@ using Yggdrasil.Enums;
 
 namespace Yggdrasil
 {
-    // The awaiter.
+    // The real awaiter.
     public class CoroutineManager
     {
         private readonly Stack<Action> _buffer = new Stack<Action>(100);
