@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
+using Yggdrasil.Utility;
 
 namespace Yggdrasil.Coroutines
 {
@@ -75,6 +76,8 @@ namespace Yggdrasil.Coroutines
     [AsyncMethodBuilder(typeof(Coroutine))]
     public class Coroutine : ICriticalNotifyCompletion, IContinuation
     {
+        private static readonly ConcurrentPoolMap<IStateMachineWrapper> _concurrentPool = new ConcurrentPoolMap<IStateMachineWrapper>();
+
         private IStateMachineWrapper _stateMachine;
 
         public static Coroutine Create()
@@ -98,11 +101,15 @@ namespace Yggdrasil.Coroutines
 
         public void SetResult()
         {
-
+            if (_stateMachine != null) { _concurrentPool.Recycle(_stateMachine); }
+            _stateMachine = null;
         }
 
         public void SetException(Exception exception)
         {
+            if (_stateMachine != null) { _concurrentPool.Recycle(_stateMachine); }
+            _stateMachine = null;
+
             CoroutineManager.CurrentInstance.SetException(exception);
         }
 
@@ -114,13 +121,10 @@ namespace Yggdrasil.Coroutines
 
         public void Start<TStateMachine>(ref TStateMachine stateMachine) where TStateMachine : IAsyncStateMachine
         {
-            if (_stateMachine == null)
-            {
-                _stateMachine = new StateMachineWrapper<TStateMachine>();
-            }
-
-            var wrapper = (StateMachineWrapper<TStateMachine>)_stateMachine;
+            var wrapper = _concurrentPool.Get<StateMachineWrapper<TStateMachine>>();
             wrapper.StateMachine = stateMachine;
+
+            _stateMachine = wrapper;
 
             wrapper.MoveNext();
         }
