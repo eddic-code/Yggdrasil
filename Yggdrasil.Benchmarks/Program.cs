@@ -4,11 +4,14 @@ namespace Yggdrasil.Benchmarks
 {
     public class Program
     {
-        public static void Main()
+        public static void Main(string[] args)
         {
-            //var summary = BenchmarkRunner.Run<NestedCoroutineBenchmark>();
+            BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
+        }
 
-            var s = new NestedCoroutineBenchmark();
+        public static void ProfilerTest()
+        {
+            var s = new GenericCoroutineBenchmark();
 
             s.Setup();
             s.Execute();
