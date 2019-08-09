@@ -5,14 +5,16 @@ using Yggdrasil.Utility;
 namespace Yggdrasil.Coroutines
 {
     [AsyncMethodBuilder(typeof(Coroutine<>))]
-    public class Coroutine<T> : ICriticalNotifyCompletion, IContinuation
+    public class Coroutine<T> : CoroutineBase, ICriticalNotifyCompletion, IContinuation
     {
-        private IAsyncStateMachine _stateMachine;
+        private static readonly ConcurrentPool<Coroutine<T>> _pool = new ConcurrentPool<Coroutine<T>>();
+
+        private IStateMachineWrapper _stateMachine;
         private T _result;
 
         public static Coroutine<T> Create()
         {
-            return new Coroutine<T>();
+            return _pool.Get();
         }
 
         public bool IsCompleted => false;
@@ -26,16 +28,27 @@ namespace Yggdrasil.Coroutines
 
         public T GetResult()
         {
-            return _result;
+            var result = _result;
+
+            _result = default;
+            _pool.Recycle(this);
+
+            return result;
         }
 
         public void SetResult(T result)
         {
             _result = result;
+
+            if (_stateMachine != null) { SmPool.Recycle(_stateMachine); }
+            _stateMachine = null;
         }
 
         public void SetException(Exception exception)
         {
+            if (_stateMachine != null) { SmPool.Recycle(_stateMachine); }
+            _stateMachine = null;
+
             CoroutineManager.CurrentInstance.SetException(exception);
         }
 
@@ -47,23 +60,23 @@ namespace Yggdrasil.Coroutines
 
         public void Start<TStateMachine>(ref TStateMachine stateMachine) where TStateMachine : IAsyncStateMachine
         {
-            _stateMachine = stateMachine;
-            _stateMachine.MoveNext();
+            var wrapper = SmPool.Get<StateMachineWrapper<TStateMachine>>();
+            wrapper.StateMachine = stateMachine;
+
+            _stateMachine = wrapper;
+
+            wrapper.MoveNext();
         }
 
         public void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
             where TAwaiter : INotifyCompletion where TStateMachine : IAsyncStateMachine
         {
-            _stateMachine = stateMachine;
-
             CoroutineManager.CurrentInstance.AddContinuation(this);
         }
 
         public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
             where TAwaiter : ICriticalNotifyCompletion where TStateMachine : IAsyncStateMachine
         {
-            _stateMachine = stateMachine;
-
             CoroutineManager.CurrentInstance.AddContinuation(this);
         }
 
@@ -74,10 +87,9 @@ namespace Yggdrasil.Coroutines
     }
 
     [AsyncMethodBuilder(typeof(Coroutine))]
-    public class Coroutine : ICriticalNotifyCompletion, IContinuation
+    public class Coroutine : CoroutineBase, ICriticalNotifyCompletion, IContinuation
     {
         private static readonly ConcurrentPool<Coroutine> _pool = new ConcurrentPool<Coroutine>();
-        private static readonly ConcurrentPoolMap<IStateMachineWrapper> _smPool = new ConcurrentPoolMap<IStateMachineWrapper>();
 
         private IStateMachineWrapper _stateMachine;
 
@@ -107,13 +119,13 @@ namespace Yggdrasil.Coroutines
 
         public void SetResult()
         {
-            if (_stateMachine != null) { _smPool.Recycle(_stateMachine); }
+            if (_stateMachine != null) { SmPool.Recycle(_stateMachine); }
             _stateMachine = null;
         }
 
         public void SetException(Exception exception)
         {
-            if (_stateMachine != null) { _smPool.Recycle(_stateMachine); }
+            if (_stateMachine != null) { SmPool.Recycle(_stateMachine); }
             _stateMachine = null;
 
             CoroutineManager.CurrentInstance.SetException(exception);
@@ -127,7 +139,7 @@ namespace Yggdrasil.Coroutines
 
         public void Start<TStateMachine>(ref TStateMachine stateMachine) where TStateMachine : IAsyncStateMachine
         {
-            var wrapper = _smPool.Get<StateMachineWrapper<TStateMachine>>();
+            var wrapper = SmPool.Get<StateMachineWrapper<TStateMachine>>();
             wrapper.StateMachine = stateMachine;
 
             _stateMachine = wrapper;

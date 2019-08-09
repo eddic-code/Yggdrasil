@@ -70,7 +70,7 @@ namespace Yggdrasil.Benchmarks
                 await Yield;
             }
 
-            // No awaits inside on purpose.
+            // No awaits inside for testing purposes.
 #pragma warning disable 1998
             private async Coroutine MethodD()
 #pragma warning restore 1998
