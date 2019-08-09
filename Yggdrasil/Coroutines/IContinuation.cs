@@ -1,4 +1,4 @@
-﻿namespace Yggdrasil
+﻿namespace Yggdrasil.Coroutines
 {
     public interface IContinuation
     {

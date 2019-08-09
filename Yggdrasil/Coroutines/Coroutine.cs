@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
 
-namespace Yggdrasil
+namespace Yggdrasil.Coroutines
 {
     [AsyncMethodBuilder(typeof(Coroutine<>))]
     public class Coroutine<T> : ICriticalNotifyCompletion, IContinuation

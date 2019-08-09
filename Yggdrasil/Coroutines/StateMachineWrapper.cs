@@ -1,6 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 
-namespace Yggdrasil
+namespace Yggdrasil.Coroutines
 {
     internal class StateMachineWrapper<T> : IStateMachineWrapper where T : IAsyncStateMachine
     {

@@ -1,4 +1,4 @@
-﻿namespace Yggdrasil
+﻿namespace Yggdrasil.Coroutines
 {
     internal interface IStateMachineWrapper
     {

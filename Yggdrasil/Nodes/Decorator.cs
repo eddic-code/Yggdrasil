@@ -1,4 +1,6 @@
-﻿namespace Yggdrasil.Nodes
+﻿using Yggdrasil.Coroutines;
+
+namespace Yggdrasil.Nodes
 {
     public class Decorator : Node
     {

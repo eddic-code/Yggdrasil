@@ -1,7 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using Yggdrasil.Nodes;
 
-namespace Yggdrasil
+namespace Yggdrasil.Coroutines
 {
     // The real awaiter.
     public class CoroutineManager

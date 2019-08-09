@@ -1,4 +1,6 @@
-﻿namespace Yggdrasil
+﻿using Yggdrasil.Coroutines;
+
+namespace Yggdrasil.Nodes
 {
     public abstract class Node
     {
@@ -6,7 +8,7 @@
 
         protected Coroutine Yield => _manager.Yield;
 
-        public Node(CoroutineManager tree)
+        protected Node(CoroutineManager tree)
         {
             _manager = tree;
         }

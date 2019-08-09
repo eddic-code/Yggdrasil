@@ -1,4 +1,6 @@
 ﻿using BenchmarkDotNet.Attributes;
+using Yggdrasil.Coroutines;
+using Yggdrasil.Nodes;
 
 namespace Yggdrasil.Benchmarks
 {

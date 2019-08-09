@@ -2,6 +2,8 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Yggdrasil.Coroutines;
+using Yggdrasil.Nodes;
 
 namespace Yggdrasil.Tests
 {
