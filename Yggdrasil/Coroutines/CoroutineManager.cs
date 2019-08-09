@@ -10,6 +10,8 @@ namespace Yggdrasil.Coroutines
         private readonly Stack<IContinuation> _continuationsBuffer = new Stack<IContinuation>(100);
         private readonly List<IContinuation> _continuations = new List<IContinuation>(100);
 
+        private Coroutine _rootCoroutine;
+
         internal readonly Coroutine Yield;
 
         internal static CoroutineManager CurrentInstance;
@@ -42,7 +44,7 @@ namespace Yggdrasil.Coroutines
             }
             else
             {
-                Root.Tick();
+                _rootCoroutine = Root.Tick();
             }
 
             ConsumeBuffers();
@@ -75,7 +77,14 @@ namespace Yggdrasil.Coroutines
             foreach (var continuation in _continuationsBuffer) { _continuations.Add(continuation); }
             _continuationsBuffer.Clear();
 
-            if (_continuations.Count == 0) { TickCount++; }
+            // The tick finished for the whole tree.
+            if (_continuations.Count == 0)
+            {
+                TickCount++;
+
+                // Forces recycling, otherwise GetResult() is never called for the root coroutine.
+                _rootCoroutine.GetResult();
+            }
         }
     }
 }

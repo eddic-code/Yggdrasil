@@ -4,7 +4,7 @@ using Yggdrasil.Nodes;
 
 namespace Yggdrasil.Benchmarks
 {
-    [CoreJob(baseline: true)]
+    [CoreJob(true)]
     [MemoryDiagnoser]
     public class NestedCoroutineBenchmark
     {
@@ -36,7 +36,46 @@ namespace Yggdrasil.Benchmarks
             {
                 await Yield;
 
+                await MethodA();
+
                 await Yield;
+
+                await MethodB();
+                await MethodC();
+
+                await Yield;
+
+                await MethodD();
+                await MethodA();
+
+                await Yield;
+            }
+
+            private async Coroutine MethodA()
+            {
+                await Yield;
+
+                await MethodB();
+
+                await Yield;
+            }
+
+            private async Coroutine MethodB()
+            {
+                await Yield;
+            }
+
+            private async Coroutine MethodC()
+            {
+                await Yield;
+            }
+
+            // No awaits inside on purpose.
+#pragma warning disable 1998
+            private async Coroutine MethodD()
+#pragma warning restore 1998
+            {
+
             }
         }
     }

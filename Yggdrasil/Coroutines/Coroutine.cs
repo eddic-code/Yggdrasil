@@ -76,13 +76,14 @@ namespace Yggdrasil.Coroutines
     [AsyncMethodBuilder(typeof(Coroutine))]
     public class Coroutine : ICriticalNotifyCompletion, IContinuation
     {
-        private static readonly ConcurrentPoolMap<IStateMachineWrapper> _concurrentPool = new ConcurrentPoolMap<IStateMachineWrapper>();
+        private static readonly ConcurrentPool<Coroutine> _pool = new ConcurrentPool<Coroutine>();
+        private static readonly ConcurrentPoolMap<IStateMachineWrapper> _smPool = new ConcurrentPoolMap<IStateMachineWrapper>();
 
         private IStateMachineWrapper _stateMachine;
 
         public static Coroutine Create()
         {
-            return new Coroutine();
+            return _pool.Get();
         }
 
         public Coroutine GetAwaiter()
@@ -96,18 +97,23 @@ namespace Yggdrasil.Coroutines
 
         public object GetResult()
         {
+            if (CoroutineManager.CurrentInstance.Yield != this)
+            {
+                _pool.Recycle(this);
+            }
+
             return null;
         }
 
         public void SetResult()
         {
-            if (_stateMachine != null) { _concurrentPool.Recycle(_stateMachine); }
+            if (_stateMachine != null) { _smPool.Recycle(_stateMachine); }
             _stateMachine = null;
         }
 
         public void SetException(Exception exception)
         {
-            if (_stateMachine != null) { _concurrentPool.Recycle(_stateMachine); }
+            if (_stateMachine != null) { _smPool.Recycle(_stateMachine); }
             _stateMachine = null;
 
             CoroutineManager.CurrentInstance.SetException(exception);
@@ -121,7 +127,7 @@ namespace Yggdrasil.Coroutines
 
         public void Start<TStateMachine>(ref TStateMachine stateMachine) where TStateMachine : IAsyncStateMachine
         {
-            var wrapper = _concurrentPool.Get<StateMachineWrapper<TStateMachine>>();
+            var wrapper = _smPool.Get<StateMachineWrapper<TStateMachine>>();
             wrapper.StateMachine = stateMachine;
 
             _stateMachine = wrapper;
