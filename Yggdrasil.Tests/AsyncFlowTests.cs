@@ -41,8 +41,6 @@ namespace Yggdrasil.Tests
 
             sequence.AddRange(new[] { "TICK", "1C"});
             Assert.IsTrue(stages.SequenceEqual(sequence));
-
-            manager.Dispose();
         }
 
         private class TestNode : Node
@@ -128,8 +126,6 @@ namespace Yggdrasil.Tests
 
             sequence.AddRange(new[] { "TICK", "3B: 12", "1D"});
             Assert.IsTrue(stages.SequenceEqual(sequence));
-
-            manager.Dispose();
         }
 
         private class NestedCoroutinesTestNode : Node
@@ -252,8 +248,6 @@ namespace Yggdrasil.Tests
 
             sequence.AddRange(new List<string> { "TICK", "1A", "2A" });
             Assert.IsTrue(stages.SequenceEqual(sequence));
-
-            manager.Dispose();
         }
 
         private class LoopTestNode : Node

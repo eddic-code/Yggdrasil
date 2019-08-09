@@ -4,15 +4,20 @@ using System.Runtime.CompilerServices;
 
 namespace Yggdrasil
 {
-    // The awaitable task type that also acts as its awaiter.
-    // We recycle the generic types to reduce allocations.
-    [AsyncMethodBuilder(typeof(CoroutineMethodBuilder<>))]
-    public struct Coroutine<T> : ICriticalNotifyCompletion, INotifyCompletion
+    [AsyncMethodBuilder(typeof(Coroutine<>))]
+    public class Coroutine<T> : ICriticalNotifyCompletion, INotifyCompletion
     {
-        // Dictionary can be non-concurrent since only one thread should access a manager key at a time.
-        private static readonly Dictionary<CoroutineManager, T> _results = new Dictionary<CoroutineManager, T>();
+        private IAsyncStateMachine _stateMachine;
+        private T _result;
+
+        public static Coroutine<T> Create()
+        {
+            return new Coroutine<T>();
+        }
 
         public bool IsCompleted => false;
+
+        public Coroutine<T> Task => this;
 
         public Coroutine<T> GetAwaiter()
         {
@@ -21,46 +26,61 @@ namespace Yggdrasil
 
         public T GetResult()
         {
-            return _results[CoroutineManager.CurrentInstance];
+            return _result;
         }
 
-        public static void SetResult(T result)
+        public void SetResult(T result)
         {
-            var manager = CoroutineManager.CurrentInstance;
-
-            if (!_results.ContainsKey(manager))
-            {
-                manager.AddDiposeCallback<T>(OnManagerDisposed);
-            }
-
-            _results[manager] = result;
+            _result = result;
         }
 
-        public void OnCompleted(Action continuation)
+        public void SetException(Exception exception)
         {
-            CoroutineManager.CurrentInstance.AddContinuation(continuation);
+            CoroutineManager.CurrentInstance.SetException(exception);
         }
 
-        public void UnsafeOnCompleted(Action continuation)
+        public void OnCompleted(Action continuation) { }
+
+        public void UnsafeOnCompleted(Action continuation) { }
+
+        public void SetStateMachine(IAsyncStateMachine stateMachine) { }
+
+        public void Start<TStateMachine>(ref TStateMachine stateMachine) where TStateMachine : IAsyncStateMachine
         {
-            CoroutineManager.CurrentInstance.AddContinuation(continuation);
+            _stateMachine = stateMachine;
+            _stateMachine.MoveNext();
         }
 
-        private static void OnManagerDisposed(CoroutineManager manager)
+        public void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
+            where TAwaiter : INotifyCompletion where TStateMachine : IAsyncStateMachine
         {
-            _results.Remove(manager);
+            _stateMachine = stateMachine;
+
+            CoroutineManager.CurrentInstance.AddContinuation(MoveNext);
+        }
+
+        public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
+            where TAwaiter : ICriticalNotifyCompletion where TStateMachine : IAsyncStateMachine
+        {
+            _stateMachine = stateMachine;
+
+            CoroutineManager.CurrentInstance.AddContinuation(MoveNext);
+        }
+
+        private void MoveNext()
+        {
+            _stateMachine.MoveNext();
         }
     }
 
-    // No need to recycle this since there's only one instance per manager that gets reused.
-    [AsyncMethodBuilder(typeof(CoroutineMethodBuilder))]
-    public struct Coroutine : ICriticalNotifyCompletion, INotifyCompletion
+    [AsyncMethodBuilder(typeof(Coroutine))]
+    public class Coroutine : ICriticalNotifyCompletion, INotifyCompletion
     {
-        public readonly CoroutineManager Manager;
+        private IAsyncStateMachine _stateMachine;
 
-        public Coroutine(CoroutineManager manager)
+        public static Coroutine Create()
         {
-            Manager = manager;
+            return new Coroutine();
         }
 
         public Coroutine GetAwaiter()
@@ -70,10 +90,7 @@ namespace Yggdrasil
 
         public bool IsCompleted => false;
 
-        public void SetException(Exception exception)
-        {
-            Manager.SetException(exception);
-        }
+        public Coroutine Task => this;
 
         public object GetResult()
         {
@@ -85,14 +102,42 @@ namespace Yggdrasil
 
         }
 
-        public void OnCompleted(Action continuation)
+        public void SetException(Exception exception)
         {
-            Manager.AddContinuation(continuation);
+            CoroutineManager.CurrentInstance.SetException(exception);
         }
 
-        public void UnsafeOnCompleted(Action continuation)
+        public void OnCompleted(Action continuation) { }
+
+        public void UnsafeOnCompleted(Action continuation) { }
+
+        public void SetStateMachine(IAsyncStateMachine stateMachine) { }
+
+        public void Start<TStateMachine>(ref TStateMachine stateMachine) where TStateMachine : IAsyncStateMachine
         {
-            Manager.AddContinuation(continuation);
+            _stateMachine = stateMachine;
+            _stateMachine.MoveNext();
+        }
+
+        public void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
+            where TAwaiter : INotifyCompletion where TStateMachine : IAsyncStateMachine
+        {
+            _stateMachine = stateMachine;
+
+            CoroutineManager.CurrentInstance.AddContinuation(MoveNext);
+        }
+
+        public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
+            where TAwaiter : ICriticalNotifyCompletion where TStateMachine : IAsyncStateMachine
+        {
+            _stateMachine = stateMachine;
+
+            CoroutineManager.CurrentInstance.AddContinuation(MoveNext);
+        }
+
+        private void MoveNext()
+        {
+            _stateMachine.MoveNext();
         }
     }
 }
