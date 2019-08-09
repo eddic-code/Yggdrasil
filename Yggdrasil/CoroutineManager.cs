@@ -6,8 +6,8 @@ namespace Yggdrasil
     // The real awaiter.
     public class CoroutineManager
     {
-        private readonly Stack<Action> _continuationsBuffer = new Stack<Action>(100);
-        private readonly List<Action> _continuations = new List<Action>(100);
+        private readonly Stack<IContinuation> _continuationsBuffer = new Stack<IContinuation>(100);
+        private readonly List<IContinuation> _continuations = new List<IContinuation>(100);
 
         internal readonly Coroutine Yield;
 
@@ -35,7 +35,7 @@ namespace Yggdrasil
                     var next = _continuations[_continuations.Count - 1];
                     _continuations.RemoveAt(_continuations.Count - 1);
 
-                    next();
+                    next.MoveNext();
                 }
                 while (_continuationsBuffer.Count == 0 && _continuations.Count > 0);
             }
@@ -64,7 +64,7 @@ namespace Yggdrasil
             throw exception;
         }
 
-        internal void AddContinuation(Action continuation)
+        internal void AddContinuation(IContinuation continuation)
         {
             _continuationsBuffer.Push(continuation);
         }

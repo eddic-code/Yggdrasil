@@ -1,11 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
 namespace Yggdrasil
 {
     [AsyncMethodBuilder(typeof(Coroutine<>))]
-    public class Coroutine<T> : ICriticalNotifyCompletion, INotifyCompletion
+    public class Coroutine<T> : ICriticalNotifyCompletion, IContinuation
     {
         private IAsyncStateMachine _stateMachine;
         private T _result;
@@ -56,7 +55,7 @@ namespace Yggdrasil
         {
             _stateMachine = stateMachine;
 
-            CoroutineManager.CurrentInstance.AddContinuation(MoveNext);
+            CoroutineManager.CurrentInstance.AddContinuation(this);
         }
 
         public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
@@ -64,19 +63,19 @@ namespace Yggdrasil
         {
             _stateMachine = stateMachine;
 
-            CoroutineManager.CurrentInstance.AddContinuation(MoveNext);
+            CoroutineManager.CurrentInstance.AddContinuation(this);
         }
 
-        private void MoveNext()
+        public void MoveNext()
         {
             _stateMachine.MoveNext();
         }
     }
 
     [AsyncMethodBuilder(typeof(Coroutine))]
-    public class Coroutine : ICriticalNotifyCompletion, INotifyCompletion
+    public class Coroutine : ICriticalNotifyCompletion, IContinuation
     {
-        private IAsyncStateMachine _stateMachine;
+        private IStateMachineWrapper _stateMachine;
 
         public static Coroutine Create()
         {
@@ -115,27 +114,30 @@ namespace Yggdrasil
 
         public void Start<TStateMachine>(ref TStateMachine stateMachine) where TStateMachine : IAsyncStateMachine
         {
-            _stateMachine = stateMachine;
-            _stateMachine.MoveNext();
+            if (_stateMachine == null)
+            {
+                _stateMachine = new StateMachineWrapper<TStateMachine>();
+            }
+
+            var wrapper = (StateMachineWrapper<TStateMachine>)_stateMachine;
+            wrapper.StateMachine = stateMachine;
+
+            wrapper.MoveNext();
         }
 
         public void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
             where TAwaiter : INotifyCompletion where TStateMachine : IAsyncStateMachine
         {
-            _stateMachine = stateMachine;
-
-            CoroutineManager.CurrentInstance.AddContinuation(MoveNext);
+            CoroutineManager.CurrentInstance.AddContinuation(this);
         }
 
         public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
             where TAwaiter : ICriticalNotifyCompletion where TStateMachine : IAsyncStateMachine
         {
-            _stateMachine = stateMachine;
-
-            CoroutineManager.CurrentInstance.AddContinuation(MoveNext);
+            CoroutineManager.CurrentInstance.AddContinuation(this);
         }
 
-        private void MoveNext()
+        public void MoveNext()
         {
             _stateMachine.MoveNext();
         }

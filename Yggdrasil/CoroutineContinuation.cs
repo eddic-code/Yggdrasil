@@ -5,9 +5,9 @@ namespace Yggdrasil
     internal struct CoroutineContinuation
     {
         public readonly Action Continuation;
-        public readonly IDiscardable Builder;
+        public readonly IContinuation Builder;
 
-        public CoroutineContinuation(IDiscardable builder, Action continuation)
+        public CoroutineContinuation(IContinuation builder, Action continuation)
         {
             Builder = builder;
             Continuation = continuation;
