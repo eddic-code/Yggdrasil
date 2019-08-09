@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
 namespace Yggdrasil
@@ -10,7 +9,6 @@ namespace Yggdrasil
         private static readonly ConcurrentStack<CoroutineMethodBuilder<T>> _pool = new ConcurrentStack<CoroutineMethodBuilder<T>>();
 
         private IAsyncStateMachine _stateMachine;
-        private Coroutine<T> _coroutine;
         private bool _isDiscarded;
 
         public static CoroutineMethodBuilder<T> Create()
@@ -22,6 +20,7 @@ namespace Yggdrasil
             }
 
             builder._isDiscarded = false;
+            CoroutineManager.CurrentInstance.RegisterBuilder(builder);
 
             return builder;
         }
@@ -32,23 +31,20 @@ namespace Yggdrasil
             _stateMachine.MoveNext();
         }
 
-        public void SetStateMachine(IAsyncStateMachine stateMachine)
-        {
-            _stateMachine = stateMachine;
-        }
+        public void SetStateMachine(IAsyncStateMachine stateMachine) { }
 
         // Last call made to the builder.
         public void SetException(Exception exception)
         {
-            _coroutine.SetException(exception);
-
-            Discard();
+            CoroutineManager.CurrentInstance.SetException(exception);
         }
 
         // Last call made to the builder.
         public void SetResult(T result)
         {
-            _coroutine.SetResult(result);
+            Coroutine<T>.SetResult(result);
+
+            CoroutineManager.CurrentInstance.UnregisterBuilder(this);
 
             Discard();
         }
@@ -67,15 +63,7 @@ namespace Yggdrasil
             awaiter.OnCompleted(MoveNext);
         }
 
-        public Coroutine<T> Task
-        {
-            get
-            {
-                _coroutine = Coroutine<T>.Create(CoroutineManager.CurrentInstance);
-
-                return _coroutine;
-            }
-        }
+        public Coroutine<T> Task { get; } = new Coroutine<T>();
 
         public void MoveNext()
         {
@@ -86,8 +74,6 @@ namespace Yggdrasil
         {
             if (_isDiscarded) { return; }
             _isDiscarded = true;
-
-            _coroutine = null;
 
             // Should we null the state machine too?
             // It's an object when in Debug, a struct when in Release.
@@ -109,13 +95,13 @@ namespace Yggdrasil
 
         public static CoroutineMethodBuilder Create()
         {
-            // We pool method builders to avoid allocations.
             if (!_pool.TryPop(out var builder))
             {
                 builder = new CoroutineMethodBuilder();
             }
 
             builder._isDiscarded = false;
+            CoroutineManager.CurrentInstance.RegisterBuilder(builder);
 
             return builder;
         }
@@ -123,25 +109,22 @@ namespace Yggdrasil
         public void Start<TStateMachine>(ref TStateMachine stateMachine) where TStateMachine : IAsyncStateMachine
         {
             _stateMachine = stateMachine;
-            _stateMachine.MoveNext();
+            stateMachine.MoveNext();
         }
 
-        public void SetStateMachine(IAsyncStateMachine stateMachine)
-        {
-            _stateMachine = stateMachine;
-        }
+        public void SetStateMachine(IAsyncStateMachine stateMachine) { }
 
         // Last call made to the builder.
         public void SetException(Exception exception)
         {
             CoroutineManager.CurrentInstance.SetException(exception);
-
-            Discard();
         }
 
         // Last call made to the builder.
         public void SetResult()
         {
+            CoroutineManager.CurrentInstance.UnregisterBuilder(this);
+
             Discard();
         }
 
@@ -150,7 +133,7 @@ namespace Yggdrasil
         {
             _stateMachine = stateMachine;
 
-            awaiter.OnCompleted(MoveNext);
+            CoroutineManager.CurrentInstance.AddContinuation(MoveNext);
         }
 
         public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
@@ -158,15 +141,15 @@ namespace Yggdrasil
         {
             _stateMachine = stateMachine;
 
-            awaiter.OnCompleted(MoveNext);
+            CoroutineManager.CurrentInstance.AddContinuation(MoveNext);
         }
 
-        public Coroutine Task => CoroutineManager.CurrentInstance.Yield;
-
-        public void MoveNext()
+        private void MoveNext()
         {
             _stateMachine.MoveNext();
         }
+
+        public Coroutine Task => CoroutineManager.CurrentInstance.Yield;
 
         public void Discard()
         {

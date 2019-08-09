@@ -5,21 +5,12 @@ namespace Yggdrasil
     internal struct CoroutineContinuation
     {
         public readonly Action Continuation;
-        public readonly Node Node;
-        public readonly object Coroutine;
-        public readonly object Builder;
+        public readonly IDiscardable Builder;
 
-        public CoroutineContinuation(object builder, object coroutine, Action continuation, Node node)
+        public CoroutineContinuation(IDiscardable builder, Action continuation)
         {
             Builder = builder;
-            Coroutine = coroutine;
             Continuation = continuation;
-            Node = node;
-        }
-
-        public void Discard()
-        {
-            
         }
     }
 }

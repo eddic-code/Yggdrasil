@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
 namespace Yggdrasil
@@ -7,32 +7,10 @@ namespace Yggdrasil
     // The awaitable task type that also acts as its awaiter.
     // We recycle the generic types to reduce allocations.
     [AsyncMethodBuilder(typeof(CoroutineMethodBuilder<>))]
-    public class Coroutine<T> : ICriticalNotifyCompletion, INotifyCompletion, IDiscardable
+    public struct Coroutine<T> : ICriticalNotifyCompletion, INotifyCompletion
     {
-        private static readonly ConcurrentStack<Coroutine<T>> _pool = new ConcurrentStack<Coroutine<T>>();
-
-        private bool _isDiscarded;
-
-        public T Result;
-        public CoroutineManager Manager;
-
-        public static Coroutine<T> Create(CoroutineManager manager)
-        {
-            if (!_pool.TryPop(out var coroutine))
-            {
-                coroutine = new Coroutine<T>(manager);
-            }
-
-            coroutine.Manager = manager;
-            coroutine._isDiscarded = false;
-
-            return coroutine;
-        }
-
-        public Coroutine(CoroutineManager manager)
-        {
-            Manager = manager;
-        }
+        // Dictionary can be non-concurrent since only one thread should access a manager key at a time.
+        private static readonly Dictionary<CoroutineManager, T> _results = new Dictionary<CoroutineManager, T>();
 
         public bool IsCompleted => false;
 
@@ -43,46 +21,42 @@ namespace Yggdrasil
 
         public T GetResult()
         {
-            return Result;
+            return _results[CoroutineManager.CurrentInstance];
         }
 
-        public void SetException(Exception exception)
+        public static void SetResult(T result)
         {
-            Manager.SetException(exception);
-        }
+            var manager = CoroutineManager.CurrentInstance;
 
-        public void SetResult(T result)
-        {
-            Result = result;
+            if (!_results.ContainsKey(manager))
+            {
+                manager.AddDiposeCallback<T>(OnManagerDisposed);
+            }
+
+            _results[manager] = result;
         }
 
         public void OnCompleted(Action continuation)
         {
-            Manager.OnCompleted(continuation);
+            CoroutineManager.CurrentInstance.AddContinuation(continuation);
         }
 
         public void UnsafeOnCompleted(Action continuation)
         {
-            Manager.OnCompleted(continuation);
+            CoroutineManager.CurrentInstance.AddContinuation(continuation);
         }
 
-        public void Discard()
+        private static void OnManagerDisposed(CoroutineManager manager)
         {
-            if (_isDiscarded) { return; }
-            _isDiscarded = true;
-
-            Result = default;
-            Manager = null;
-
-            _pool.Push(this);
+            _results.Remove(manager);
         }
     }
 
     // No need to recycle this since there's only one instance per manager that gets reused.
     [AsyncMethodBuilder(typeof(CoroutineMethodBuilder))]
-    public class Coroutine : ICriticalNotifyCompletion, INotifyCompletion
+    public struct Coroutine : ICriticalNotifyCompletion, INotifyCompletion
     {
-        public CoroutineManager Manager;
+        public readonly CoroutineManager Manager;
 
         public Coroutine(CoroutineManager manager)
         {
@@ -111,19 +85,14 @@ namespace Yggdrasil
 
         }
 
-        public void OnCompleted(IDiscardable builder, Action continuation)
-        {
-
-        }
-
         public void OnCompleted(Action continuation)
         {
-            Manager.OnCompleted(continuation);
+            Manager.AddContinuation(continuation);
         }
 
         public void UnsafeOnCompleted(Action continuation)
         {
-            Manager.OnCompleted(continuation);
+            Manager.AddContinuation(continuation);
         }
     }
 }

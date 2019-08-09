@@ -1,15 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
-using Yggdrasil.Enums;
 
 namespace Yggdrasil
 {
     // The real awaiter.
-    public class CoroutineManager
+    public class CoroutineManager : IDisposable
     {
-        private readonly Stack<Action> _buffer = new Stack<Action>(100);
+        private readonly Stack<Action> _continuationsBuffer = new Stack<Action>(100);
         private readonly List<Action> _continuations = new List<Action>(100);
+        private readonly Stack<IDiscardable> _buildersBuffer = new Stack<IDiscardable>(100);
+        private readonly Dictionary<Type, Action<CoroutineManager>> _onDisposeCallbacks = new Dictionary<Type, Action<CoroutineManager>>(100);
 
         internal readonly Coroutine Yield;
 
@@ -21,6 +21,8 @@ namespace Yggdrasil
         }
 
         public Node Root { get; set; }
+
+        public long TickCount { get; private set; }
 
         public void Tick()
         {
@@ -37,33 +39,72 @@ namespace Yggdrasil
 
                     next();
                 }
-                while (_buffer.Count == 0 && _continuations.Count > 0);
+                while (_continuationsBuffer.Count == 0 && _continuations.Count > 0);
             }
             else
             {
                 Root.Tick();
             }
 
-            foreach (var continuation in _buffer) { _continuations.Add(continuation); }
-            _buffer.Clear();
+            ConsumeBuffers();
+        }
+
+        public void Reset()
+        {
+            TickCount = 0;
+
+            // Discard the entire tree's continuations.
+            _continuations.Clear();
+            _continuationsBuffer.Clear();
+
+            // Recycle all active builders.
+            foreach (var builder in _buildersBuffer) { builder.Discard(); }
+            _buildersBuffer.Clear();
+        }
+
+        public void Dispose()
+        {
+            foreach (var callback in _onDisposeCallbacks.Values) { callback(this); }
+            _onDisposeCallbacks.Clear();
+
+            Reset();
         }
 
         internal void SetException(Exception exception)
         {
-            _continuations.Clear();
-            _buffer.Clear();
+            Reset();
 
+            // Temporary throw. Could log exception instead and continue.
             throw exception;
         }
 
-        internal void OnCompleted(Action continuation)
+        internal void AddContinuation(Action continuation)
         {
-            _buffer.Push(continuation);
+            _continuationsBuffer.Push(continuation);
         }
 
-        internal void UnsafeOnCompleted(Action continuation)
+        internal void RegisterBuilder(IDiscardable builder)
         {
-            _buffer.Push(continuation);
+            _buildersBuffer.Push(builder);
+        }
+
+        internal void UnregisterBuilder(IDiscardable builder)
+        {
+            var previous = _buildersBuffer.Pop();
+            if (previous != builder) { throw new Exception("Builder buffer ordering error."); }
+        }
+
+        internal void AddDiposeCallback<T>(Action<CoroutineManager> callback)
+        {
+            _onDisposeCallbacks[typeof(T)] = callback;
+        }
+
+        private void ConsumeBuffers()
+        {
+            foreach (var continuation in _continuationsBuffer) { _continuations.Add(continuation); }
+            _continuationsBuffer.Clear();
+
+            if (_continuations.Count == 0) { TickCount++; }
         }
     }
 }
