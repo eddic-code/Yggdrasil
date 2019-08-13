@@ -14,6 +14,7 @@ namespace Yggdrasil.Coroutines
 
         internal readonly Coroutine Yield;
 
+        [ThreadStatic]
         internal static CoroutineManager CurrentInstance;
 
         public CoroutineManager()
