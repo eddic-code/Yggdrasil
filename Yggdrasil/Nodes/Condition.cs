@@ -18,9 +18,9 @@ namespace Yggdrasil.Nodes
 
         public Func<object, bool> Conditional { get; set; } = DefaultConditional;
 
-        protected override async Coroutine<Result> Tick()
+        protected override Coroutine<Result> Tick()
         {
-            return Conditional(State) ? Result.Success : Result.Failure;
+            return Conditional(State) ? Success : Failure;
         }
 
         private static bool DefaultConditional(object s)
