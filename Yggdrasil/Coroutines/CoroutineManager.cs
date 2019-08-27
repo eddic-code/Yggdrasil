@@ -8,16 +8,18 @@ namespace Yggdrasil.Coroutines
     // The real awaiter.
     public class CoroutineManager
     {
-        private readonly Stack<IContinuation> _continuationsBuffer = new Stack<IContinuation>(100);
-        private readonly List<IContinuation> _continuations = new List<IContinuation>(100);
-        private readonly Stack<Node> _active = new Stack<Node>(100);
-
-        private Coroutine<Result> _rootCoroutine;
-
-        internal readonly Coroutine Yield;
-
         [ThreadStatic]
         internal static CoroutineManager CurrentInstance;
+
+        private readonly Stack<Node> _active = new Stack<Node>(100);
+        private readonly List<CoroutineThread> _threads = new List<CoroutineThread>(100);
+
+        private Node _root;
+        private CoroutineThread _mainThread;
+        private CoroutineThread _activeThread;
+        private int _activeThreadIndex;
+
+        internal readonly Coroutine Yield;
 
         public event EventHandler<Node> NodeActiveEventHandler;
 
@@ -28,7 +30,16 @@ namespace Yggdrasil.Coroutines
             Yield = new Coroutine();
         }
 
-        public Node Root { get; set; }
+        public Node Root
+        {
+            get => _root;
+            set
+            {
+                _root = value;
+                _mainThread = CreateThread(value);
+                Reset();
+            }
+        }
 
         internal object State { get; private set; }
 
@@ -36,31 +47,43 @@ namespace Yggdrasil.Coroutines
 
         public Result Result { get; private set; }
 
-        public void Tick(object state = null)
+        public void Update(object state = null)
         {
             if (Root == null) { return; }
 
+            Result = Result.Unknown;
             CurrentInstance = this;
             State = state;
 
-            if (_continuations.Count > 0)
+            _activeThreadIndex = 0;
+
+            // Start a new tick.
+            if (_threads.Count <= 0) { _threads.Add(_mainThread); }
+
+                // Iterate over each thread. New threads might be added as we go along.
+            // Only ticks a thread once per update.
+            while (_threads.Count > _activeThreadIndex)
             {
-                do
+                _activeThread = _threads[_activeThreadIndex];
+                _activeThread.Tick();
+
+                // If the thread is still running, leave it on the list.
+                if (_activeThread.IsRunning)
                 {
-                    var next = _continuations[_continuations.Count - 1];
-                    _continuations.RemoveAt(_continuations.Count - 1);
-
-                    next.MoveNext();
+                    _activeThreadIndex += 1;
+                    continue;
                 }
-                while (_continuationsBuffer.Count == 0 && _continuations.Count > 0);
-            }
-            else
-            {
-                Result = Result.Unknown;
-                _rootCoroutine = Root.Execute();
+
+                // Remove completed threads.
+                _threads.RemoveAt(_activeThreadIndex);
             }
 
-            ConsumeBuffers();
+            // Full tick of the tree.
+            if (!_mainThread.IsRunning)
+            {
+                TickCount += 1;
+                Result = _mainThread.Result;
+            }
         }
 
         public void Reset()
@@ -68,9 +91,11 @@ namespace Yggdrasil.Coroutines
             TickCount = 0;
             Result = Result.Unknown;
 
-            // Discard the entire tree's continuations.
-            _continuations.Clear();
-            _continuationsBuffer.Clear();
+            _active.Clear();
+            _threads.Clear();
+
+            _activeThread = null;
+            _activeThreadIndex = 0;
         }
 
         internal void SetException(Exception exception)
@@ -95,22 +120,7 @@ namespace Yggdrasil.Coroutines
 
         internal void AddContinuation(IContinuation continuation)
         {
-            _continuationsBuffer.Push(continuation);
-        }
-
-        private void ConsumeBuffers()
-        {
-            foreach (var continuation in _continuationsBuffer) { _continuations.Add(continuation); }
-            _continuationsBuffer.Clear();
-
-            // The tick finished for the whole tree.
-            if (_continuations.Count == 0)
-            {
-                TickCount++;
-
-                // Forces recycling, otherwise GetResult() is never called for the root coroutine.
-                Result = _rootCoroutine.GetResult();
-            }
+            _activeThread.AddContinuation(continuation);
         }
 
         protected virtual void OnNodeActiveEvent(Node node)
@@ -123,6 +133,14 @@ namespace Yggdrasil.Coroutines
         {
             var handler = NodeInactiveEventHandler;
             handler?.Invoke(this, node);
+        }
+
+        private static CoroutineThread CreateThread(Node root)
+        {
+            return new CoroutineThread
+            {
+                Root = root
+            };
         }
     }
 }

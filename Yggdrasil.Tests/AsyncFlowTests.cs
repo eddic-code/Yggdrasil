@@ -21,25 +21,25 @@ namespace Yggdrasil.Tests
             manager.Root = node;
 
             stages.Enqueue("TICK");
-            manager.Tick();
+            manager.Update();
 
             var sequence = new List<string> { "TICK", "1A", "2A" };
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
-            manager.Tick();
+            manager.Update();
 
             sequence.AddRange(new[] { "TICK", "2B", "3A" });
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
-            manager.Tick();
+            manager.Update();
 
             sequence.AddRange(new[] { "TICK", "3B", "2C: TRUE", "1B: 10"});
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
-            manager.Tick();
+            manager.Update();
 
             sequence.AddRange(new[] { "TICK", "1C"});
             Assert.IsTrue(stages.SequenceEqual(sequence));
@@ -108,25 +108,25 @@ namespace Yggdrasil.Tests
             manager.Root = node;
 
             stages.Enqueue("TICK");
-            manager.Tick();
+            manager.Update();
 
             var sequence = new List<string> { "TICK", "1A", "3A: 5" };
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
-            manager.Tick();
+            manager.Update();
 
             sequence.AddRange(new[] { "TICK", "3B: 7", "1B", "2A"});
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
-            manager.Tick();
+            manager.Update();
 
             sequence.AddRange(new[] { "TICK", "2B", "1C: 10", "3A: 10" });
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
-            manager.Tick();
+            manager.Update();
 
             sequence.AddRange(new[] { "TICK", "3B: 12", "1D"});
             Assert.IsTrue(stages.SequenceEqual(sequence));
@@ -196,61 +196,61 @@ namespace Yggdrasil.Tests
             manager.Root = node;
 
             stages.Enqueue("TICK");
-            manager.Tick();
+            manager.Update();
 
             var sequence = new List<string> { "TICK", "1A", "2A" };
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
-            manager.Tick();
+            manager.Update();
 
             sequence.AddRange(new[] { "TICK", "2B", "3A" });
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
-            manager.Tick();
+            manager.Update();
 
             sequence.AddRange(new[] { "TICK", "3B", "2Loop: TRUE", "3A" });
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
-            manager.Tick();
+            manager.Update();
 
             sequence.AddRange(new[] { "TICK", "3B", "2Loop: FALSE", "3A" });
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
-            manager.Tick();
+            manager.Update();
 
             sequence.AddRange(new[] { "TICK", "3B", "2Loop: TRUE", "2C", "1Loop: 1", "2A" });
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
-            manager.Tick();
+            manager.Update();
 
             sequence.AddRange(new[] { "TICK", "2B", "3A" });
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
-            manager.Tick();
+            manager.Update();
 
             sequence.AddRange(new[] { "TICK", "3B", "2Loop: TRUE", "3A" });
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
-            manager.Tick();
+            manager.Update();
 
             sequence.AddRange(new[] { "TICK", "3B", "2Loop: FALSE", "3A" });
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
-            manager.Tick();
+            manager.Update();
 
             sequence.AddRange(new[] { "TICK", "3B", "2Loop: TRUE", "2C", "1Loop: 2", "1C" });
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
-            manager.Tick();
+            manager.Update();
 
             sequence.AddRange(new List<string> { "TICK", "1A", "2A" });
             Assert.IsTrue(stages.SequenceEqual(sequence));

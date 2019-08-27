@@ -29,7 +29,7 @@ namespace Yggdrasil.Tests
             Assert.AreEqual(0UL, manager.TickCount);
 
             stages.Enqueue("TICK");
-            manager.Tick(new State {A = true, B = true, C = true});
+            manager.Update(new State {A = true, B = true, C = true});
 
             Assert.AreEqual(Result.Unknown, manager.Result);
             Assert.AreEqual(0UL, manager.TickCount);
@@ -38,7 +38,7 @@ namespace Yggdrasil.Tests
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
-            manager.Tick(new State { A = true, B = true, C = true});
+            manager.Update(new State { A = true, B = true, C = true});
 
             Assert.AreEqual(Result.Success, manager.Result);
             Assert.AreEqual(1UL, manager.TickCount);
@@ -47,7 +47,7 @@ namespace Yggdrasil.Tests
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
-            manager.Tick(new State {A = true, B = true, C = true});
+            manager.Update(new State {A = true, B = true, C = true});
 
             Assert.AreEqual(Result.Unknown, manager.Result);
             Assert.AreEqual(1UL, manager.TickCount);
@@ -56,7 +56,7 @@ namespace Yggdrasil.Tests
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
-            manager.Tick(new State { A = true, B = false, C = true});
+            manager.Update(new State { A = true, B = false, C = true});
 
             Assert.AreEqual(Result.Failure, manager.Result);
             Assert.AreEqual(2UL, manager.TickCount);
@@ -65,7 +65,7 @@ namespace Yggdrasil.Tests
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
-            manager.Tick(new State {A = true, B = true, C = true});
+            manager.Update(new State {A = true, B = true, C = true});
 
             Assert.AreEqual(Result.Unknown, manager.Result);
             Assert.AreEqual(2UL, manager.TickCount);
@@ -74,7 +74,7 @@ namespace Yggdrasil.Tests
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
-            manager.Tick(new State { A = true, B = true, C = false});
+            manager.Update(new State { A = true, B = true, C = false});
 
             Assert.AreEqual(Result.Failure, manager.Result);
             Assert.AreEqual(3UL, manager.TickCount);
@@ -83,7 +83,7 @@ namespace Yggdrasil.Tests
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
-            manager.Tick(new State {A = false, B = true, C = true});
+            manager.Update(new State {A = false, B = true, C = true});
 
             Assert.AreEqual(Result.Failure, manager.Result);
             Assert.AreEqual(4UL, manager.TickCount);
@@ -110,7 +110,7 @@ namespace Yggdrasil.Tests
             Assert.AreEqual(0UL, manager.TickCount);
 
             stages.Enqueue("TICK");
-            manager.Tick(new State {A = true, B = true, C = true});
+            manager.Update(new State {A = true, B = true, C = true});
 
             Assert.AreEqual(Result.Success, manager.Result);
             Assert.AreEqual(1UL, manager.TickCount);
@@ -119,7 +119,7 @@ namespace Yggdrasil.Tests
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
-            manager.Tick(new State { A = true, B = false, C = true});
+            manager.Update(new State { A = true, B = false, C = true});
 
             Assert.AreEqual(Result.Failure, manager.Result);
             Assert.AreEqual(2UL, manager.TickCount);
@@ -147,7 +147,7 @@ namespace Yggdrasil.Tests
 
             // false false false
             stages.Enqueue("TICK");
-            manager.Tick(new State {A = false, B = false, C = false});
+            manager.Update(new State {A = false, B = false, C = false});
 
             Assert.AreEqual(Result.Unknown, manager.Result);
             Assert.AreEqual(0UL, manager.TickCount);
@@ -156,7 +156,7 @@ namespace Yggdrasil.Tests
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
-            manager.Tick(new State { A = false, B = false, C = false});
+            manager.Update(new State { A = false, B = false, C = false});
 
             Assert.AreEqual(Result.Failure, manager.Result);
             Assert.AreEqual(1UL, manager.TickCount);
@@ -166,7 +166,7 @@ namespace Yggdrasil.Tests
 
             // false false true
             stages.Enqueue("TICK");
-            manager.Tick(new State {A = false, B = false, C = true});
+            manager.Update(new State {A = false, B = false, C = true});
 
             Assert.AreEqual(Result.Unknown, manager.Result);
             Assert.AreEqual(1UL, manager.TickCount);
@@ -175,7 +175,7 @@ namespace Yggdrasil.Tests
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
-            manager.Tick(new State { A = true, B = false, C = true});
+            manager.Update(new State { A = true, B = false, C = true});
 
             Assert.AreEqual(Result.Success, manager.Result);
             Assert.AreEqual(2UL, manager.TickCount);
@@ -185,7 +185,7 @@ namespace Yggdrasil.Tests
 
             // false true true
             stages.Enqueue("TICK");
-            manager.Tick(new State {A = false, B = true, C = true});
+            manager.Update(new State {A = false, B = true, C = true});
 
             Assert.AreEqual(Result.Unknown, manager.Result);
             Assert.AreEqual(2UL, manager.TickCount);
@@ -194,7 +194,7 @@ namespace Yggdrasil.Tests
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
-            manager.Tick(new State { A = true, B = true, C = true});
+            manager.Update(new State { A = true, B = true, C = true});
 
             Assert.AreEqual(Result.Success, manager.Result);
             Assert.AreEqual(3UL, manager.TickCount);
@@ -204,7 +204,7 @@ namespace Yggdrasil.Tests
 
             // true true true
             stages.Enqueue("TICK");
-            manager.Tick(new State {A = true, B = true, C = true});
+            manager.Update(new State {A = true, B = true, C = true});
 
             Assert.AreEqual(Result.Success, manager.Result);
             Assert.AreEqual(4UL, manager.TickCount);
@@ -227,7 +227,7 @@ namespace Yggdrasil.Tests
 
             // true => false
             stages.Enqueue("TICK");
-            manager.Tick(new State {A = true});
+            manager.Update(new State {A = true});
 
             Assert.AreEqual(Result.Unknown, manager.Result);
             Assert.AreEqual(0UL, manager.TickCount);
@@ -236,7 +236,7 @@ namespace Yggdrasil.Tests
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
-            manager.Tick(new State { A = true});
+            manager.Update(new State { A = true});
 
             Assert.AreEqual(Result.Failure, manager.Result);
             Assert.AreEqual(1UL, manager.TickCount);
@@ -246,7 +246,7 @@ namespace Yggdrasil.Tests
 
             // false => true
             stages.Enqueue("TICK");
-            manager.Tick(new State { A = false });
+            manager.Update(new State { A = false });
 
             Assert.AreEqual(Result.Unknown, manager.Result);
             Assert.AreEqual(1UL, manager.TickCount);
@@ -255,7 +255,7 @@ namespace Yggdrasil.Tests
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
-            manager.Tick(new State { A = false });
+            manager.Update(new State { A = false });
 
             Assert.AreEqual(Result.Success, manager.Result);
             Assert.AreEqual(2UL, manager.TickCount);
@@ -279,7 +279,7 @@ namespace Yggdrasil.Tests
 
             // true true
             stages.Enqueue("TICK");
-            manager.Tick(new State {A = true, B = true});
+            manager.Update(new State {A = true, B = true});
 
             Assert.AreEqual(Result.Unknown, manager.Result);
             Assert.AreEqual(0UL, manager.TickCount);
@@ -288,7 +288,7 @@ namespace Yggdrasil.Tests
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
-            manager.Tick(new State { A = true, B = true});
+            manager.Update(new State { A = true, B = true});
 
             Assert.AreEqual(Result.Success, manager.Result);
             Assert.AreEqual(1UL, manager.TickCount);
@@ -298,7 +298,7 @@ namespace Yggdrasil.Tests
 
             // false true
             stages.Enqueue("TICK");
-            manager.Tick(new State { A = false, B = true});
+            manager.Update(new State { A = false, B = true});
 
             Assert.AreEqual(Result.Failure, manager.Result);
             Assert.AreEqual(2UL, manager.TickCount);
@@ -326,7 +326,7 @@ namespace Yggdrasil.Tests
 
             // true true true
             stages.Enqueue("TICK");
-            manager.Tick(new State {A = true, B = true, C = true});
+            manager.Update(new State {A = true, B = true, C = true});
 
             Assert.AreEqual(Result.Unknown, manager.Result);
             Assert.AreEqual(0UL, manager.TickCount);
@@ -335,7 +335,7 @@ namespace Yggdrasil.Tests
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
-            manager.Tick(new State { A = true, B = true, C = true});
+            manager.Update(new State { A = true, B = true, C = true});
 
             Assert.AreEqual(Result.Success, manager.Result);
             Assert.AreEqual(1UL, manager.TickCount);

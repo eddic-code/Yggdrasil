@@ -29,13 +29,13 @@ namespace Yggdrasil.Benchmarks
 
             _state = new State {A = true, B = true, C = true};
 
-            while (_manager.TickCount == 0) { _manager.Tick(_state); }
+            while (_manager.TickCount == 0) { _manager.Update(_state); }
         }
 
         [Benchmark]
         public void Execute()
         {
-            while (_manager.TickCount == 1) { _manager.Tick(_state); }
+            while (_manager.TickCount == 1) { _manager.Update(_state); }
         }
 
         private class State

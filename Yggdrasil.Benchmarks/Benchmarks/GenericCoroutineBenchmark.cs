@@ -17,13 +17,13 @@ namespace Yggdrasil.Benchmarks
             _manager = new CoroutineManager();
             _manager.Root = new GenericCoroutineTestNode(_manager);
 
-            while (_manager.TickCount == 0) { _manager.Tick(); }
+            while (_manager.TickCount == 0) { _manager.Update(); }
         }
 
         [Benchmark]
         public void Execute()
         {
-            while (_manager.TickCount == 1) { _manager.Tick(); }
+            while (_manager.TickCount == 1) { _manager.Update(); }
         }
 
         private class GenericCoroutineTestNode : Node
