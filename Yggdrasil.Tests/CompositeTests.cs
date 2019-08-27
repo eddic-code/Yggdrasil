@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Yggdrasil.Coroutines;
@@ -19,88 +20,52 @@ namespace Yggdrasil.Tests
 
             manager.Root = root;
 
-            var conditionalA = new Condition(manager, s => ((State)s).A);
-            var conditionalB = new Condition(manager, s => ((State)s).B);
+            var conditionalA = new TestConditionNode(manager) {Print="A", Stages = stages, Conditional = s => s.A};
+            var conditionalB = new TestYieldConditionNode(manager) {PrintA="BYield", PrintB="B", Stages = stages, Conditional = s => s.B};
+            var conditionalC = new TestConditionNode(manager) {Print="C", Stages = stages, Conditional = s => s.C};
 
-            root.Children = new List<Node> {conditionalA, conditionalB};
+            root.Children = new List<Node> {conditionalA, conditionalB, conditionalC};
 
             stages.Enqueue("TICK");
-            manager.Tick(new State {A = true, B = true});
+            manager.Tick(new State {A = true, B = true, C = true});
+            Assert.AreEqual(Result.Unknown, manager.Result);
+            var sequence = new List<string> { "TICK", "A", "BYield"};
+            Assert.IsTrue(stages.SequenceEqual(sequence));
+
+            stages.Enqueue("TICK");
+            manager.Tick(new State { A = true, B = true, C = true});
             Assert.AreEqual(Result.Success, manager.Result);
-
-            var sequence = new List<string> { "TICK" };
+            sequence.AddRange(new[] { "TICK", "B", "C" });
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
-            manager.Tick(new State { A = true, B = false });
+            manager.Tick(new State {A = true, B = true, C = true});
+            Assert.AreEqual(Result.Unknown, manager.Result);
+            sequence.AddRange(new[] {  "TICK", "A", "BYield" });
+            Assert.IsTrue(stages.SequenceEqual(sequence));
+
+            stages.Enqueue("TICK");
+            manager.Tick(new State { A = true, B = false, C = true});
             Assert.AreEqual(Result.Failure, manager.Result);
-
-            sequence.AddRange(new[] { "TICK" });
+            sequence.AddRange(new[] { "TICK", "B"});
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
-            manager.Tick(new State { A = false, B = true });
+            manager.Tick(new State {A = true, B = true, C = true});
+            Assert.AreEqual(Result.Unknown, manager.Result);
+            sequence.AddRange(new[] {  "TICK", "A", "BYield" });
+            Assert.IsTrue(stages.SequenceEqual(sequence));
+
+            stages.Enqueue("TICK");
+            manager.Tick(new State { A = true, B = true, C = false});
             Assert.AreEqual(Result.Failure, manager.Result);
-
-            sequence.AddRange(new[] { "TICK" });
-            Assert.IsTrue(stages.SequenceEqual(sequence));
-
-            root.Children = new List<Node> {conditionalA, new SuccessNode(manager){Stages = stages}, conditionalB, new SuccessNode(manager){Stages = stages}};
-
-            stages.Enqueue("TICK");
-            manager.Tick(new State {A = true, B = true});
-            Assert.AreEqual(Result.Success, manager.Result);
-
-            sequence.AddRange(new[] { "TICK", "Success", "Success"});
+            sequence.AddRange(new[] { "TICK", "B", "C"});
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
-            manager.Tick(new State {A = true, B = false});
+            manager.Tick(new State {A = false, B = true, C = true});
             Assert.AreEqual(Result.Failure, manager.Result);
-
-            sequence.AddRange(new[] {"TICK", "Success"});
-            Assert.IsTrue(stages.SequenceEqual(sequence));
-
-            stages.Enqueue("TICK");
-            manager.Tick(new State {A = false, B = true});
-            Assert.AreEqual(Result.Failure, manager.Result);
-
-            sequence.AddRange(new[] {"TICK"});
-            Assert.IsTrue(stages.SequenceEqual(sequence));
-
-            root.Children = new List<Node> {conditionalA, new SuccessNode(manager){Stages = stages}, conditionalB, new FailureNode(manager){Stages = stages}};
-
-            stages.Enqueue("TICK");
-            manager.Tick(new State {A = true, B = true});
-            Assert.AreEqual(Result.Failure, manager.Result);
-
-            sequence.AddRange(new[] { "TICK", "Success", "Failure"});
-            Assert.IsTrue(stages.SequenceEqual(sequence));
-
-            root.Children = new List<Node> {conditionalA, new SuccessYieldNode(manager){Stages = stages}, conditionalB, new SuccessNode(manager){Stages = stages}};
-
-            stages.Enqueue("TICK");
-            manager.Tick(new State {A = true, B = true});
-
-            sequence.AddRange(new[] { "TICK", "Success Yield"});
-            Assert.IsTrue(stages.SequenceEqual(sequence));
-
-            stages.Enqueue("TICK");
-            manager.Tick(new State {A = true, B = true});
-
-            sequence.AddRange(new[] { "TICK", "Success", "Success"});
-            Assert.IsTrue(stages.SequenceEqual(sequence));
-
-            stages.Enqueue("TICK");
-            manager.Tick(new State {A = true, B = true});
-
-            sequence.AddRange(new[] { "TICK", "Success Yield"});
-            Assert.IsTrue(stages.SequenceEqual(sequence));
-
-            stages.Enqueue("TICK");
-            manager.Tick(new State {A = false, B = true});
-
-            sequence.AddRange(new[] { "TICK" });
+            sequence.AddRange(new[] {  "TICK", "A" });
             Assert.IsTrue(stages.SequenceEqual(sequence));
         }
 
@@ -108,51 +73,47 @@ namespace Yggdrasil.Tests
         {
             public bool A;
             public bool B;
+            public bool C;
         }
 
-        private class SuccessNode : Node
+        private class TestConditionNode : Node
         {
+            public string Print;
+
             public Queue<string> Stages;
 
-            public SuccessNode(CoroutineManager manager) : base(manager) { }
+            public Func<State, bool> Conditional;
+
+            public TestConditionNode(CoroutineManager manager) : base(manager) { }
 
             protected override Coroutine<Result> Tick()
             {
-                Stages.Enqueue("Success");
+                Stages.Enqueue(Print);
 
-                return Success;
+                return Conditional((State) State) ? Success : Failure;
             }
         }
 
-        private class SuccessYieldNode : Node
+        private class TestYieldConditionNode : Node
         {
+            public string PrintA;
+            public string PrintB;
+
             public Queue<string> Stages;
 
-            public SuccessYieldNode(CoroutineManager manager) : base(manager) { }
+            public Func<State, bool> Conditional;
+
+            public TestYieldConditionNode(CoroutineManager manager) : base(manager) { }
 
             protected override async Coroutine<Result> Tick()
             {
-                Stages.Enqueue("Success Yield");
+                Stages.Enqueue(PrintA);
 
                 await Yield;
 
-                Stages.Enqueue("Success");
+                Stages.Enqueue(PrintB);
 
-                return Result.Success;
-            }
-        }
-
-        private class FailureNode : Node
-        {
-            public Queue<string> Stages;
-
-            public FailureNode(CoroutineManager manager) : base(manager) { }
-
-            protected override Coroutine<Result> Tick()
-            {
-                Stages.Enqueue("Failure");
-
-                return Failure;
+                return Conditional((State) State) ? Result.Success : Result.Failure;
             }
         }
     }

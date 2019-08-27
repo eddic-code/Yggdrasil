@@ -56,6 +56,7 @@ namespace Yggdrasil.Coroutines
             }
             else
             {
+                Result = Result.Unknown;
                 _rootCoroutine = Root.Execute();
             }
 
