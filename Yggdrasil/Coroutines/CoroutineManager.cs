@@ -19,6 +19,10 @@ namespace Yggdrasil.Coroutines
         [ThreadStatic]
         internal static CoroutineManager CurrentInstance;
 
+        public event EventHandler<Node> NodeActiveEventHandler;
+
+        public event EventHandler<Node> NodeInactiveEventHandler;
+
         public CoroutineManager()
         {
             Yield = new Coroutine();
@@ -78,11 +82,13 @@ namespace Yggdrasil.Coroutines
         internal void OnNodeTickStarted(Node node)
         {
             _active.Push(node);
+            OnNodeActiveEvent(node);
         }
 
         internal void OnNodeTickFinished()
         {
-            _active.Pop();
+            var node = _active.Pop();
+            OnNodeInactiveEvent(node);
         }
 
         internal void AddContinuation(IContinuation continuation)
@@ -103,6 +109,18 @@ namespace Yggdrasil.Coroutines
                 // Forces recycling, otherwise GetResult() is never called for the root coroutine.
                 Result = _rootCoroutine.GetResult();
             }
+        }
+
+        protected virtual void OnNodeActiveEvent(Node node)
+        {
+            var handler = NodeActiveEventHandler;
+            handler?.Invoke(this, node);
+        }
+
+        protected virtual void OnNodeInactiveEvent(Node node)
+        {
+            var handler = NodeInactiveEventHandler;
+            handler?.Invoke(this, node);
         }
     }
 }
