@@ -1,5 +1,6 @@
 ﻿using BenchmarkDotNet.Attributes;
 using Yggdrasil.Coroutines;
+using Yggdrasil.Enums;
 using Yggdrasil.Nodes;
 
 namespace Yggdrasil.Benchmarks
@@ -27,12 +28,12 @@ namespace Yggdrasil.Benchmarks
 
         private class NestedCoroutineTestNode : Node
         {
-            public NestedCoroutineTestNode(CoroutineManager tree) : base(tree)
+            public NestedCoroutineTestNode(CoroutineManager manager) : base(manager)
             {
 
             }
 
-            public override async Coroutine Tick()
+            protected override async Coroutine<Result> Tick()
             {
                 await Yield;
 
@@ -49,6 +50,8 @@ namespace Yggdrasil.Benchmarks
                 await MethodA();
 
                 await Yield;
+
+                return Result.Success;
             }
 
             private async Coroutine MethodA()

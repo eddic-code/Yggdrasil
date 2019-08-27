@@ -17,6 +17,13 @@ namespace Yggdrasil.Coroutines
             return _pool.Get();
         }
 
+        public static Coroutine<T> CreateWith(T result)
+        {
+            var coroutine = _pool.Get();
+            coroutine._result = result;
+            return coroutine;
+        }
+
         public bool IsCompleted => false;
 
         public Coroutine<T> Task => this;

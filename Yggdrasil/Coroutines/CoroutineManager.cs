@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Yggdrasil.Enums;
 using Yggdrasil.Nodes;
 
 namespace Yggdrasil.Coroutines
@@ -9,10 +10,13 @@ namespace Yggdrasil.Coroutines
     {
         private readonly Stack<IContinuation> _continuationsBuffer = new Stack<IContinuation>(100);
         private readonly List<IContinuation> _continuations = new List<IContinuation>(100);
+        private readonly Stack<Node> _active = new Stack<Node>(100);
 
-        private Coroutine _rootCoroutine;
+        private Coroutine<Result> _rootCoroutine;
 
         internal readonly Coroutine Yield;
+        internal readonly Coroutine<Result> Success;
+        internal readonly Coroutine<Result> Failure;
 
         [ThreadStatic]
         internal static CoroutineManager CurrentInstance;
@@ -20,17 +24,24 @@ namespace Yggdrasil.Coroutines
         public CoroutineManager()
         {
             Yield = new Coroutine();
+            Success = Coroutine<Result>.CreateWith(Result.Success);
+            Failure = Coroutine<Result>.CreateWith(Result.Failure);
         }
 
         public Node Root { get; set; }
 
-        public long TickCount { get; private set; }
+        internal object State { get; private set; }
 
-        public void Tick()
+        public ulong TickCount { get; private set; }
+
+        public Result Result { get; private set; }
+
+        public void Tick(object state = null)
         {
             if (Root == null) { return; }
 
             CurrentInstance = this;
+            State = state;
 
             if (_continuations.Count > 0)
             {
@@ -45,7 +56,7 @@ namespace Yggdrasil.Coroutines
             }
             else
             {
-                _rootCoroutine = Root.Tick();
+                _rootCoroutine = Root.Execute();
             }
 
             ConsumeBuffers();
@@ -68,6 +79,16 @@ namespace Yggdrasil.Coroutines
             throw exception;
         }
 
+        internal void OnNodeTickStarted(Node node)
+        {
+            _active.Push(node);
+        }
+
+        internal void OnNodeTickFinished()
+        {
+            _active.Pop();
+        }
+
         internal void AddContinuation(IContinuation continuation)
         {
             _continuationsBuffer.Push(continuation);
@@ -84,7 +105,7 @@ namespace Yggdrasil.Coroutines
                 TickCount++;
 
                 // Forces recycling, otherwise GetResult() is never called for the root coroutine.
-                _rootCoroutine.GetResult();
+                Result = _rootCoroutine.GetResult();
             }
         }
     }

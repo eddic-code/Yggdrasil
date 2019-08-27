@@ -1,8 +1,8 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using Yggdrasil.Coroutines;
+using Yggdrasil.Enums;
 using Yggdrasil.Nodes;
 
 namespace Yggdrasil.Tests
@@ -49,12 +49,12 @@ namespace Yggdrasil.Tests
         {
             public Queue<string> Stages;
 
-            public TestNode(CoroutineManager tree) : base(tree)
+            public TestNode(CoroutineManager manager) : base(manager)
             {
 
             }
 
-            public override async Coroutine Tick()
+            protected override async Coroutine<Result> Tick()
             {
                 Stages.Enqueue("1A");
 
@@ -65,6 +65,8 @@ namespace Yggdrasil.Tests
                 await Yield;
 
                 Stages.Enqueue("1C");
+
+                return Result.Success;
             }
 
             private async Coroutine<int> Method2()
@@ -134,12 +136,12 @@ namespace Yggdrasil.Tests
         {
             public Queue<string> Stages;
 
-            public NestedCoroutinesTestNode(CoroutineManager tree) : base(tree)
+            public NestedCoroutinesTestNode(CoroutineManager manager) : base(manager)
             {
 
             }
 
-            public override async Coroutine Tick()
+            protected override async Coroutine<Result> Tick()
             {
                 Stages.Enqueue("1A");
 
@@ -154,6 +156,8 @@ namespace Yggdrasil.Tests
                 await Method3(result);
 
                 Stages.Enqueue("1D");
+
+                return Result.Success;
             }
 
             private async Coroutine<int> Method2()
@@ -256,12 +260,12 @@ namespace Yggdrasil.Tests
         {
             public Queue<string> Stages;
 
-            public LoopTestNode(CoroutineManager tree) : base(tree)
+            public LoopTestNode(CoroutineManager manager) : base(manager)
             {
 
             }
 
-            public override async Coroutine Tick()
+            protected override async Coroutine<Result> Tick()
             {
                 Stages.Enqueue("1A");
 
@@ -272,6 +276,8 @@ namespace Yggdrasil.Tests
                 }
 
                 Stages.Enqueue("1C");
+
+                return Result.Success;
             }
 
             private async Coroutine<int> Method2(int iteration)
