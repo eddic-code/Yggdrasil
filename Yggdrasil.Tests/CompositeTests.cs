@@ -54,13 +54,53 @@ namespace Yggdrasil.Tests
             sequence.AddRange(new[] { "TICK", "Success", "Success"});
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
-            root.Children = new List<Node> {conditionalA, new FailureNode(manager){Stages = stages}, conditionalB, new SuccessNode(manager){Stages = stages}};
+            stages.Enqueue("TICK");
+            manager.Tick(new State {A = true, B = false});
+            Assert.AreEqual(Result.Failure, manager.Result);
+
+            sequence.AddRange(new[] {"TICK", "Success"});
+            Assert.IsTrue(stages.SequenceEqual(sequence));
+
+            stages.Enqueue("TICK");
+            manager.Tick(new State {A = false, B = true});
+            Assert.AreEqual(Result.Failure, manager.Result);
+
+            sequence.AddRange(new[] {"TICK"});
+            Assert.IsTrue(stages.SequenceEqual(sequence));
+
+            root.Children = new List<Node> {conditionalA, new SuccessNode(manager){Stages = stages}, conditionalB, new FailureNode(manager){Stages = stages}};
 
             stages.Enqueue("TICK");
             manager.Tick(new State {A = true, B = true});
             Assert.AreEqual(Result.Failure, manager.Result);
 
-            sequence.AddRange(new[] { "TICK", "Failure"});
+            sequence.AddRange(new[] { "TICK", "Success", "Failure"});
+            Assert.IsTrue(stages.SequenceEqual(sequence));
+
+            root.Children = new List<Node> {conditionalA, new SuccessYieldNode(manager){Stages = stages}, conditionalB, new SuccessNode(manager){Stages = stages}};
+
+            stages.Enqueue("TICK");
+            manager.Tick(new State {A = true, B = true});
+
+            sequence.AddRange(new[] { "TICK", "Success Yield"});
+            Assert.IsTrue(stages.SequenceEqual(sequence));
+
+            stages.Enqueue("TICK");
+            manager.Tick(new State {A = true, B = true});
+
+            sequence.AddRange(new[] { "TICK", "Success", "Success"});
+            Assert.IsTrue(stages.SequenceEqual(sequence));
+
+            stages.Enqueue("TICK");
+            manager.Tick(new State {A = true, B = true});
+
+            sequence.AddRange(new[] { "TICK", "Success Yield"});
+            Assert.IsTrue(stages.SequenceEqual(sequence));
+
+            stages.Enqueue("TICK");
+            manager.Tick(new State {A = false, B = true});
+
+            sequence.AddRange(new[] { "TICK" });
             Assert.IsTrue(stages.SequenceEqual(sequence));
         }
 
