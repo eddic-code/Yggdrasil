@@ -7,12 +7,35 @@ namespace Yggdrasil.Benchmarks
         public static void Main(string[] args)
         {
             BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
-            //ProfilerTest();
+            //ProfilerTests();
         }
 
-        public static void ProfilerTest()
+        public static void ProfilerTests()
+        {
+            SequenceNodeBenchmark();
+            GenericCoroutineBenchmark();
+            NestedCoroutineBenchmark();
+        }
+
+        public static void SequenceNodeBenchmark()
+        {
+            var s = new SequenceNodeBenchmark();
+
+            s.Setup();
+            s.Execute();
+        }
+
+        public static void GenericCoroutineBenchmark()
         {
             var s = new GenericCoroutineBenchmark();
+
+            s.Setup();
+            s.Execute();
+        }
+
+        public static void NestedCoroutineBenchmark()
+        {
+            var s = new NestedCoroutineBenchmark();
 
             s.Setup();
             s.Execute();

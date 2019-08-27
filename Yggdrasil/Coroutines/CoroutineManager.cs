@@ -66,6 +66,7 @@ namespace Yggdrasil.Coroutines
         public void Reset()
         {
             TickCount = 0;
+            Result = Result.Unknown;
 
             // Discard the entire tree's continuations.
             _continuations.Clear();

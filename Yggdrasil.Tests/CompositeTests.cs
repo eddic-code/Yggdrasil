@@ -26,45 +26,68 @@ namespace Yggdrasil.Tests
 
             root.Children = new List<Node> {conditionalA, conditionalB, conditionalC};
 
+            Assert.AreEqual(0UL, manager.TickCount);
+
             stages.Enqueue("TICK");
             manager.Tick(new State {A = true, B = true, C = true});
+
             Assert.AreEqual(Result.Unknown, manager.Result);
+            Assert.AreEqual(0UL, manager.TickCount);
+
             var sequence = new List<string> { "TICK", "A", "BYield"};
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
             manager.Tick(new State { A = true, B = true, C = true});
+
             Assert.AreEqual(Result.Success, manager.Result);
+            Assert.AreEqual(1UL, manager.TickCount);
+
             sequence.AddRange(new[] { "TICK", "B", "C" });
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
             manager.Tick(new State {A = true, B = true, C = true});
+
             Assert.AreEqual(Result.Unknown, manager.Result);
+            Assert.AreEqual(1UL, manager.TickCount);
+
             sequence.AddRange(new[] {  "TICK", "A", "BYield" });
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
             manager.Tick(new State { A = true, B = false, C = true});
+
             Assert.AreEqual(Result.Failure, manager.Result);
+            Assert.AreEqual(2UL, manager.TickCount);
+
             sequence.AddRange(new[] { "TICK", "B"});
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
             manager.Tick(new State {A = true, B = true, C = true});
+
             Assert.AreEqual(Result.Unknown, manager.Result);
+            Assert.AreEqual(2UL, manager.TickCount);
+
             sequence.AddRange(new[] {  "TICK", "A", "BYield" });
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
             manager.Tick(new State { A = true, B = true, C = false});
+
             Assert.AreEqual(Result.Failure, manager.Result);
+            Assert.AreEqual(3UL, manager.TickCount);
+
             sequence.AddRange(new[] { "TICK", "B", "C"});
             Assert.IsTrue(stages.SequenceEqual(sequence));
 
             stages.Enqueue("TICK");
             manager.Tick(new State {A = false, B = true, C = true});
+
             Assert.AreEqual(Result.Failure, manager.Result);
+            Assert.AreEqual(4UL, manager.TickCount);
+
             sequence.AddRange(new[] {  "TICK", "A" });
             Assert.IsTrue(stages.SequenceEqual(sequence));
         }
