@@ -344,6 +344,42 @@ namespace Yggdrasil.Tests
             Assert.IsTrue(stages.SequenceEqual(sequence));
         }
 
+        [TestMethod]
+        public void ParallelNodeTest()
+        {
+            var manager = new CoroutineManager();
+            var root = new Parallel(manager);
+            var stages = new Queue<string>();
+
+            var conditionalA = new TestYieldConditionNode(manager) {PrintA="AYield", PrintB="A", Stages = stages, Conditional = s => s.A};
+            var conditionalB = new TestYieldConditionNode(manager) {PrintA="BYield", PrintB="B", Stages = stages, Conditional = s => s.B};
+            var conditionalC = new TestYieldConditionNode(manager) {PrintA="CYield", PrintB="C", Stages = stages, Conditional = s => s.C};
+
+            root.Children = new List<Node> {conditionalA, conditionalB, conditionalC};
+            manager.Root = root;
+
+            Assert.AreEqual(0UL, manager.TickCount);
+
+            // true true true => true
+            stages.Enqueue("TICK");
+            manager.Update(new State {A = true, B = true, C = true});
+
+            Assert.AreEqual(Result.Unknown, manager.Result);
+            Assert.AreEqual(0UL, manager.TickCount);
+
+            var sequence = new List<string> { "TICK", "AYield", "BYield", "CYield"};
+            Assert.IsTrue(stages.SequenceEqual(sequence));
+
+            stages.Enqueue("TICK");
+            manager.Update(new State {A = true, B = true, C = true});
+
+            Assert.AreEqual(Result.Success, manager.Result);
+            Assert.AreEqual(1UL, manager.TickCount);
+
+            sequence.AddRange(new[] { "TICK", "A", "B", "C"});
+            Assert.IsTrue(stages.SequenceEqual(sequence));
+        }
+
         private class State
         {
             public bool A;

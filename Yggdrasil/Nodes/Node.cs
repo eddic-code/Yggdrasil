@@ -5,32 +5,36 @@ namespace Yggdrasil.Nodes
 {
     public abstract class Node
     {
-        private readonly CoroutineManager _manager;
+        protected readonly CoroutineManager Manager;
 
-        protected Coroutine Yield => _manager.Yield;
+        protected Coroutine Yield => Manager.Yield;
         protected Coroutine<Result> Success => Coroutine<Result>.CreateWith(Result.Success);
         protected Coroutine<Result> Failure => Coroutine<Result>.CreateWith(Result.Failure);
-        protected object State => _manager.State;
+        protected object State => Manager.State;
 
         protected Node(CoroutineManager manager)
         {
-            _manager = manager;
+            Manager = manager;
         }
 
         public string Guid { get; set; }
 
         public async Coroutine<Result> Execute()
         {
-            _manager.OnNodeTickStarted(this);
+            Manager.OnNodeTickStarted(this);
 
             Start();
 
             var result = await Tick();
 
-            _manager.OnNodeTickFinished();
+            Stop();
+
+            Manager.OnNodeTickFinished(this);
 
             return result;
         }
+
+        public virtual void Terminate() { }
 
         protected virtual void Start() { }
         protected virtual void Stop() { }

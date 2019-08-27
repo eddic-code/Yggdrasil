@@ -8,20 +8,44 @@ namespace Yggdrasil.Coroutines
     {
         private readonly Stack<IContinuation> _continuationsBuffer = new Stack<IContinuation>(100);
         private readonly List<IContinuation> _continuations = new List<IContinuation>(100);
+        private readonly Stack<Node> _active = new Stack<Node>(100);
+
+        internal HashSet<CoroutineThread> OutputDependencies { get; } = new HashSet<CoroutineThread>();
+        internal HashSet<CoroutineThread> InputDependencies { get; } = new HashSet<CoroutineThread>();
+
+        internal bool DependenciesFinished { get; set; }
 
         private Coroutine<Result> _rootCoroutine;
 
-        public Node Root { get; set; }
+        public CoroutineThread(Node root, bool neverCompletes, ulong ticksToComplete)
+        {
+            Root = root;
+            TicksToComplete = ticksToComplete;
+            NeverCompletes = neverCompletes;
+        }
+
+        public Node Root { get; }
+
+        public ulong TicksToComplete { get; }
+
+        public bool IsComplete { get; private set; }
+
+        public bool NeverCompletes { get; private set; }
 
         public Result Result { get; private set; }
 
         public bool IsRunning { get; private set; }
 
+        public ulong TickCount { get; private set; }
+
+        public IEnumerable<Node> ActiveNodes => _active;
+
         // Returns true whenever a full subtree tick was completed.
         public void Tick()
         {
-            IsRunning = false;
             if (Root == null) { return; }
+
+            IsRunning = true;
 
             if (_continuations.Count > 0)
             {
@@ -47,12 +71,30 @@ namespace Yggdrasil.Coroutines
 
         public void Reset()
         {
-            IsRunning = false;
+            foreach (var node in _active) { node.Terminate(); }
 
+            IsRunning = false;
+            TickCount = 0;
+            IsComplete = false;
             Result = Result.Unknown;
 
+            _active.Clear();
             _continuations.Clear();
             _continuationsBuffer.Clear();
+
+            InputDependencies.Clear();
+            OutputDependencies.Clear();
+            DependenciesFinished = false;
+        }
+
+        internal void OnNodeTickStarted(Node node)
+        {
+            _active.Push(node);
+        }
+
+        internal void OnNodeTickFinished()
+        {
+            _active.Pop();
         }
 
         internal void AddContinuation(IContinuation continuation)
@@ -70,6 +112,9 @@ namespace Yggdrasil.Coroutines
             {
                 // Forces recycling, otherwise GetResult() is never called for the root coroutine.
                 Result = _rootCoroutine.GetResult();
+
+                TickCount += 1;
+                IsComplete = !NeverCompletes && TickCount >= TicksToComplete;
             }
         }
     }
