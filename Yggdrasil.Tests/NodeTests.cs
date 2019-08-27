@@ -307,6 +307,43 @@ namespace Yggdrasil.Tests
             Assert.IsTrue(stages.SequenceEqual(sequence));
         }
 
+        [TestMethod]
+        public void NestedCoroutinesNodeTest()
+        {
+            var manager = new CoroutineManager();
+            var root = new Sequence(manager);
+            var stages = new Queue<string>();
+
+            manager.Root = root;
+
+            var conditionalA = new TestConditionNode(manager) {Print="A0", Stages = stages, Conditional = s => s.A};
+            var conditionalB = new TestNestedConditionNode(manager) {Stages = stages, Conditional = s => s.B};
+            var conditionalC = new TestConditionNode(manager) {Print="C0", Stages = stages, Conditional = s => s.C};
+
+            root.Children = new List<Node> {conditionalA, conditionalB, conditionalC};
+
+            Assert.AreEqual(0UL, manager.TickCount);
+
+            // true true true
+            stages.Enqueue("TICK");
+            manager.Tick(new State {A = true, B = true, C = true});
+
+            Assert.AreEqual(Result.Unknown, manager.Result);
+            Assert.AreEqual(0UL, manager.TickCount);
+
+            var sequence = new List<string> { "TICK", "A0", "A", "B", "C"};
+            Assert.IsTrue(stages.SequenceEqual(sequence));
+
+            stages.Enqueue("TICK");
+            manager.Tick(new State { A = true, B = true, C = true});
+
+            Assert.AreEqual(Result.Success, manager.Result);
+            Assert.AreEqual(1UL, manager.TickCount);
+
+            sequence.AddRange(new[] { "TICK", "D", "C0" });
+            Assert.IsTrue(stages.SequenceEqual(sequence));
+        }
+
         private class State
         {
             public bool A;
@@ -350,6 +387,47 @@ namespace Yggdrasil.Tests
                 await Yield;
 
                 Stages.Enqueue(PrintB);
+
+                return Conditional((State) State) ? Result.Success : Result.Failure;
+            }
+        }
+
+        private class TestNestedConditionNode : Node
+        {
+            public string PrintA = "A";
+            public string PrintB = "B";
+            public string PrintC = "C";
+            public string PrintD = "D";
+
+            public Queue<string> Stages;
+
+            public Func<State, bool> Conditional;
+
+            public TestNestedConditionNode(CoroutineManager manager) : base(manager) { }
+
+            protected override async Coroutine<Result> Tick()
+            {
+                Stages.Enqueue(PrintA);
+
+                await MethodB();
+
+                return await MethodC();
+            }
+
+            #pragma warning disable 1998
+            private async Coroutine MethodB()
+            #pragma warning restore 1998
+            {
+                Stages.Enqueue(PrintB);
+            }
+
+            private async Coroutine<Result> MethodC()
+            {
+                Stages.Enqueue(PrintC);
+
+                await Yield;
+
+                Stages.Enqueue(PrintD);
 
                 return Conditional((State) State) ? Result.Success : Result.Failure;
             }

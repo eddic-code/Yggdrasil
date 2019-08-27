@@ -115,7 +115,7 @@ namespace Yggdrasil.Coroutines
             return this;
         }
 
-        public bool IsCompleted => false;
+        public bool IsCompleted { get; private set; }
 
         public Coroutine Task => this;
 
@@ -123,14 +123,19 @@ namespace Yggdrasil.Coroutines
         {
             if (CoroutineManager.CurrentInstance.Yield != this)
             {
+                IsCompleted = false;
+
                 _pool.Recycle(this);
             }
 
             return null;
         }
 
+        // This is never called for a lowermost instanced Coroutine, like the CoroutineManager's Yield.
         public void SetResult()
         {
+            IsCompleted = true;
+
             if (_stateMachine != null) { SmPool.Recycle(_stateMachine); }
             _stateMachine = null;
         }
