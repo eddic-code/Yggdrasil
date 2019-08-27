@@ -20,11 +20,14 @@ namespace Yggdrasil.Coroutines
         public static Coroutine<T> CreateWith(T result)
         {
             var coroutine = _pool.Get();
+
             coroutine._result = result;
+            coroutine.IsCompleted = true;
+
             return coroutine;
         }
 
-        public bool IsCompleted => false;
+        public bool IsCompleted { get; private set; }
 
         public Coroutine<T> Task => this;
 
@@ -38,6 +41,7 @@ namespace Yggdrasil.Coroutines
             var result = _result;
 
             _result = default;
+            IsCompleted = false;
             _pool.Recycle(this);
 
             return result;
@@ -46,6 +50,7 @@ namespace Yggdrasil.Coroutines
         public void SetResult(T result)
         {
             _result = result;
+            IsCompleted = true;
 
             if (_stateMachine != null) { SmPool.Recycle(_stateMachine); }
             _stateMachine = null;

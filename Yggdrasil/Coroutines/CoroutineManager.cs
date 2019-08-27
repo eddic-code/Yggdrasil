@@ -15,8 +15,6 @@ namespace Yggdrasil.Coroutines
         private Coroutine<Result> _rootCoroutine;
 
         internal readonly Coroutine Yield;
-        internal readonly Coroutine<Result> Success;
-        internal readonly Coroutine<Result> Failure;
 
         [ThreadStatic]
         internal static CoroutineManager CurrentInstance;
@@ -24,8 +22,6 @@ namespace Yggdrasil.Coroutines
         public CoroutineManager()
         {
             Yield = new Coroutine();
-            Success = Coroutine<Result>.CreateWith(Result.Success);
-            Failure = Coroutine<Result>.CreateWith(Result.Failure);
         }
 
         public Node Root { get; set; }

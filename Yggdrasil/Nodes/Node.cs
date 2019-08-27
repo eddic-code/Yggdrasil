@@ -8,8 +8,8 @@ namespace Yggdrasil.Nodes
         private readonly CoroutineManager _manager;
 
         protected Coroutine Yield => _manager.Yield;
-        protected Coroutine<Result> Success => _manager.Success;
-        protected Coroutine<Result> Failure => _manager.Failure;
+        protected Coroutine<Result> Success => Coroutine<Result>.CreateWith(Result.Success);
+        protected Coroutine<Result> Failure => Coroutine<Result>.CreateWith(Result.Failure);
         protected object State => _manager.State;
 
         protected Node(CoroutineManager manager)
