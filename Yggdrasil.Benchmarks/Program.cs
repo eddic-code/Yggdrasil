@@ -6,8 +6,8 @@ namespace Yggdrasil.Benchmarks
     {
         public static void Main(string[] args)
         {
-            BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
-            //ProfilerTests();
+            //BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
+            ProfilerTests();
         }
 
         public static void ProfilerTests()
@@ -17,6 +17,7 @@ namespace Yggdrasil.Benchmarks
             NestedCoroutineBenchmark();
             ParallelNodeBenchmark();
             NestedParallelNodeBenchmark();
+            DynamicSequenceNodeBenchmark();
         }
 
         public static void SequenceNodeBenchmark()
@@ -54,6 +55,14 @@ namespace Yggdrasil.Benchmarks
         public static void NestedParallelNodeBenchmark()
         {
             var s = new NestedParallelNodeBenchmark();
+
+            s.Setup();
+            s.Execute();
+        }
+
+        public static void DynamicSequenceNodeBenchmark()
+        {
+            var s = new DynamicSequenceNodeBenchmark();
 
             s.Setup();
             s.Execute();
