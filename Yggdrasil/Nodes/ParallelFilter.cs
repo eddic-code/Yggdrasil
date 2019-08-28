@@ -39,7 +39,7 @@ namespace Yggdrasil.Nodes
         private readonly List<CoroutineThread> _threads = new List<CoroutineThread>(10);
         private List<Node> _children;
 
-        public ParallelFilter(CoroutineManager manager, Func<object, bool> conditional) : base(manager)
+        public ParallelFilter(CoroutineManager manager, Func<dynamic, bool> conditional) : base(manager)
         {
             Conditional = conditional;
         }
@@ -65,7 +65,7 @@ namespace Yggdrasil.Nodes
             }
         }
 
-        public Func<object, bool> Conditional { get; set; } = DefaultConditional;
+        public Func<dynamic, bool> Conditional { get; set; } = DefaultConditional;
 
         public override void Terminate()
         {
@@ -114,7 +114,7 @@ namespace Yggdrasil.Nodes
             return processing;
         }
 
-        private static bool DefaultConditional(object s)
+        private static bool DefaultConditional(dynamic s)
         {
             return true;
         }

@@ -27,31 +27,29 @@
 
 #endregion
 
-using System;
+using System.Collections.Generic;
 using Yggdrasil.Coroutines;
 using Yggdrasil.Enums;
 
 namespace Yggdrasil.Nodes
 {
-    public class Condition : Node
+    public class Selector : Node
     {
-        public Condition(CoroutineManager manager, Func<dynamic, bool> conditional) : base(manager)
+        public Selector(CoroutineManager manager) : base(manager) { }
+
+        public List<Node> Children { get; set; }
+
+        protected override async Coroutine<Result> Tick()
         {
-            Conditional = conditional;
-        }
+            if (Children == null || Children.Count <= 0) { return Result.Failure; }
 
-        public Condition(CoroutineManager manager) : base(manager) { }
+            foreach (var child in Children)
+            {
+                var result = await child.Execute();
+                if (result == Result.Success) { return result; }
+            }
 
-        public Func<dynamic, bool> Conditional { get; set; } = DefaultConditional;
-
-        protected override Coroutine<Result> Tick()
-        {
-            return Conditional(State) ? Success : Failure;
-        }
-
-        private static bool DefaultConditional(dynamic s)
-        {
-            return true;
+            return Result.Failure;
         }
     }
 }

@@ -35,7 +35,7 @@ namespace Yggdrasil.Nodes
 {
     public class Filter : Node
     {
-        public Filter(CoroutineManager manager, Func<object, bool> conditional) : base(manager)
+        public Filter(CoroutineManager manager, Func<dynamic, bool> conditional) : base(manager)
         {
             Conditional = conditional;
         }
@@ -44,7 +44,7 @@ namespace Yggdrasil.Nodes
 
         public Node Child { get; set; }
 
-        public Func<object, bool> Conditional { get; set; } = DefaultConditional;
+        public Func<dynamic, bool> Conditional { get; set; } = DefaultConditional;
 
         protected override async Coroutine<Result> Tick()
         {
@@ -55,7 +55,7 @@ namespace Yggdrasil.Nodes
             return await Child.Execute();
         }
 
-        private static bool DefaultConditional(object s)
+        private static bool DefaultConditional(dynamic s)
         {
             return true;
         }
