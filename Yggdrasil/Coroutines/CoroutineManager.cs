@@ -13,16 +13,12 @@ namespace Yggdrasil.Coroutines
 
         private readonly List<CoroutineThread> _threads = new List<CoroutineThread>(100);
 
-        private Node _root;
-        private CoroutineThread _mainThread;
+        internal readonly Coroutine Yield;
         private CoroutineThread _activeThread;
         private int _activeThreadIndex;
+        private CoroutineThread _mainThread;
 
-        internal readonly Coroutine Yield;
-
-        public event EventHandler<Node> NodeActiveEventHandler;
-
-        public event EventHandler<Node> NodeInactiveEventHandler;
+        private Node _root;
 
         public CoroutineManager()
         {
@@ -46,9 +42,13 @@ namespace Yggdrasil.Coroutines
 
         public Result Result => _mainThread?.Result ?? Result.Unknown;
 
+        public event EventHandler<Node> NodeActiveEventHandler;
+
+        public event EventHandler<Node> NodeInactiveEventHandler;
+
         public void Update(object state = null)
         {
-            if (Root == null) { return; }
+            if (Root == null) return;
 
             CurrentInstance = this;
             State = state;
@@ -57,12 +57,13 @@ namespace Yggdrasil.Coroutines
             _activeThread = null;
 
             // Start a new tick.
-            if (_threads.Count <= 0) { _threads.Add(_mainThread); }
+            if (_threads.Count <= 0) _threads.Add(_mainThread);
 
             // Iterate over each thread. New threads might be added as we go along.
             // Only ticks a thread once per update.
 
             var dependenciesChanged = false;
+
             while (_threads.Count > _activeThreadIndex)
             {
                 _activeThread = _threads[_activeThreadIndex];
@@ -79,23 +80,27 @@ namespace Yggdrasil.Coroutines
                 _threads.RemoveAt(_activeThreadIndex);
 
                 // Remove any inbound dependencies since they are now irrelevant.
-                foreach (var d in _activeThread.InputDependencies) { d.OutputDependencies.Remove(_activeThread); }
+                foreach (var d in _activeThread.InputDependencies) d.OutputDependencies.Remove(_activeThread);
                 _activeThread.InputDependencies.Clear();
 
                 // Remove outbound dependencies and mark threads that can be ticked again this frame.
                 foreach (var d in _activeThread.OutputDependencies)
                 {
                     d.InputDependencies.Remove(_activeThread);
-                    if (d.InputDependencies.Count <= 0) { d.DependenciesFinished = true; dependenciesChanged = true; }
+                    if (d.InputDependencies.Count <= 0)
+                    {
+                        d.DependenciesFinished = true;
+                        dependenciesChanged = true;
+                    }
                 }
             }
 
-            if (dependenciesChanged) { ProcessDependencies(); }
+            if (dependenciesChanged) ProcessDependencies();
         }
 
         public void Reset()
         {
-            foreach (var thread in _threads) { thread.Reset(); }
+            foreach (var thread in _threads) thread.Reset();
 
             _threads.Clear();
             _mainThread.Reset();
@@ -140,16 +145,16 @@ namespace Yggdrasil.Coroutines
         internal void TerminateThread(CoroutineThread thread)
         {
             thread.Reset();
-            if (!_threads.Contains(thread)) { return; }
+            if (!_threads.Contains(thread)) return;
 
             // The active thread is removed on the tick loop when not running anymore.
-            if (_activeThread == thread) { return; }
+            if (_activeThread == thread) return;
 
             var index = _threads.IndexOf(thread);
             _threads.Remove(thread);
 
             // Adjust the active thread index if necessary.
-            if (index < _activeThreadIndex) { _activeThreadIndex -= 1; }
+            if (index < _activeThreadIndex) _activeThreadIndex -= 1;
         }
 
         internal void AddContinuation(IContinuation continuation)
@@ -159,13 +164,15 @@ namespace Yggdrasil.Coroutines
 
         private void ProcessDependencies()
         {
-            _activeThreadIndex = 0;
-            var dependenciesFinished = false;
+            bool dependenciesFinished;
 
             // Iterate over each thread. New threads might be added as we go along.
             // Only ticks a thread once per update.
             do
             {
+                dependenciesFinished = false;
+                _activeThreadIndex = 0;
+
                 while (_threads.Count > _activeThreadIndex)
                 {
                     _activeThread = _threads[_activeThreadIndex];
@@ -189,7 +196,7 @@ namespace Yggdrasil.Coroutines
                     _threads.RemoveAt(_activeThreadIndex);
 
                     // Remove any inbound dependencies since they are now irrelevant.
-                    foreach (var d in _activeThread.InputDependencies) { d.OutputDependencies.Remove(_activeThread); }
+                    foreach (var d in _activeThread.InputDependencies) d.OutputDependencies.Remove(_activeThread);
                     _activeThread.InputDependencies.Clear();
 
                     // Remove outbound dependencies and mark threads that can be ticked again this frame.

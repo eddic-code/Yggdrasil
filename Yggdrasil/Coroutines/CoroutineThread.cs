@@ -6,14 +6,9 @@ namespace Yggdrasil.Coroutines
 {
     public class CoroutineThread
     {
-        private readonly Stack<IContinuation> _continuationsBuffer = new Stack<IContinuation>(100);
-        private readonly List<IContinuation> _continuations = new List<IContinuation>(100);
         private readonly Stack<Node> _active = new Stack<Node>(100);
-
-        internal HashSet<CoroutineThread> OutputDependencies { get; } = new HashSet<CoroutineThread>();
-        internal HashSet<CoroutineThread> InputDependencies { get; } = new HashSet<CoroutineThread>();
-
-        internal bool DependenciesFinished { get; set; }
+        private readonly List<IContinuation> _continuations = new List<IContinuation>(100);
+        private readonly Stack<IContinuation> _continuationsBuffer = new Stack<IContinuation>(100);
 
         private Coroutine<Result> _rootCoroutine;
 
@@ -24,13 +19,19 @@ namespace Yggdrasil.Coroutines
             NeverCompletes = neverCompletes;
         }
 
+        internal HashSet<CoroutineThread> OutputDependencies { get; } = new HashSet<CoroutineThread>();
+
+        internal HashSet<CoroutineThread> InputDependencies { get; } = new HashSet<CoroutineThread>();
+
+        internal bool DependenciesFinished { get; set; }
+
         public Node Root { get; }
 
         public ulong TicksToComplete { get; }
 
         public bool IsComplete { get; private set; }
 
-        public bool NeverCompletes { get; private set; }
+        public bool NeverCompletes { get; }
 
         public Result Result { get; private set; }
 
@@ -40,10 +41,9 @@ namespace Yggdrasil.Coroutines
 
         public IEnumerable<Node> ActiveNodes => _active;
 
-        // Returns true whenever a full subtree tick was completed.
         public void Tick()
         {
-            if (Root == null) { return; }
+            if (Root == null) return;
 
             IsRunning = true;
 
@@ -71,7 +71,7 @@ namespace Yggdrasil.Coroutines
 
         public void Reset()
         {
-            foreach (var node in _active) { node.Terminate(); }
+            foreach (var node in _active) node.Terminate();
 
             IsRunning = false;
             TickCount = 0;
@@ -104,7 +104,7 @@ namespace Yggdrasil.Coroutines
 
         private void ConsumeBuffers()
         {
-            foreach (var continuation in _continuationsBuffer) { _continuations.Add(continuation); }
+            foreach (var continuation in _continuationsBuffer) _continuations.Add(continuation);
             _continuationsBuffer.Clear();
 
             // The tick finished for the whole subtree.
@@ -112,7 +112,6 @@ namespace Yggdrasil.Coroutines
             {
                 // Forces recycling, otherwise GetResult() is never called for the root coroutine.
                 Result = _rootCoroutine.GetResult();
-
                 TickCount += 1;
                 IsComplete = !NeverCompletes && TickCount >= TicksToComplete;
             }

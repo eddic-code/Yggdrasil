@@ -482,11 +482,101 @@ namespace Yggdrasil.Tests
             Assert.IsTrue(stages.SequenceEqual(sequence));
         }
 
+        [TestMethod]
+        public void NestedParallelNodeTest()
+        {
+            var manager = new CoroutineManager();
+            var stages = new Queue<string>();
+
+            var parallelA = new Parallel(manager);
+            var parallelB = new Parallel(manager);
+            var parallelC = new Parallel(manager);
+
+            var root = new Sequence(manager);
+            var entryCondition = new Condition(manager, s => ((State) s).Entry);
+
+            var conditionalA = new TestYieldConditionNode(manager) {PrintA="AYield", PrintB="A", Stages = stages, Conditional = s => s.A};
+            var conditionalB = new TestYieldConditionNode(manager) {PrintA="BYield", PrintB="B", Stages = stages, Conditional = s => s.B};
+            var conditionalC = new TestYieldConditionNode(manager) {PrintA="CYield", PrintB="C", Stages = stages, Conditional = s => s.C};
+            var conditionalD = new TestYieldConditionNode(manager) {PrintA="DYield", PrintB="D", Stages = stages, Conditional = s => s.D};
+            var conditionalE = new TestRunningConditionNode(manager) {PrintA="E", Stages = stages, Conditional = s => s.E};
+
+            root.Children = new List<Node> {entryCondition, parallelA};
+
+            parallelA.Children = new List<Node> {parallelB, parallelC, conditionalA};
+            parallelB.Children = new List<Node> {conditionalB, conditionalC};
+            parallelC.Children = new List<Node> {conditionalD, conditionalE};
+
+            manager.Root = root;
+
+            var sequence = new List<string>();
+
+            for (var i = 0; i < 2; i++)
+            {
+                Assert.AreEqual(0UL, manager.TickCount);
+
+                stages.Enqueue("TICK");
+                sequence.AddRange(new[] {"TICK", "AYield", "BYield", "CYield", "DYield"});
+                manager.Update(new State {Entry = true, A = true, B = true, C = true, D = true, E = true});
+
+                Assert.AreEqual(Result.Unknown, manager.Result);
+                Assert.AreEqual(0UL, manager.TickCount);
+                Assert.IsTrue(stages.SequenceEqual(sequence));
+
+                stages.Enqueue("TICK");
+                sequence.AddRange(new[] {"TICK", "A", "B", "C", "D"});
+                manager.Update(new State {Entry = true, A = true, B = true, C = true, D = true, E = true});
+
+                Assert.AreEqual(Result.Unknown, manager.Result);
+                Assert.AreEqual(0UL, manager.TickCount);
+                Assert.IsTrue(stages.SequenceEqual(sequence));
+
+                stages.Enqueue("TICK");
+                sequence.AddRange(new[] {"TICK"});
+                manager.Update(new State {Entry = true, A = true, B = true, C = true, D = true, E = true});
+
+                Assert.AreEqual(Result.Unknown, manager.Result);
+                Assert.AreEqual(0UL, manager.TickCount);
+                Assert.IsTrue(stages.SequenceEqual(sequence));
+
+                stages.Enqueue("TICK");
+                sequence.AddRange(new[] {"TICK"});
+                manager.Update(new State {Entry = true, A = true, B = true, C = true, D = true, E = true});
+
+                Assert.AreEqual(Result.Unknown, manager.Result);
+                Assert.AreEqual(0UL, manager.TickCount);
+                Assert.IsTrue(stages.SequenceEqual(sequence));
+
+                stages.Enqueue("TICK");
+                sequence.AddRange(new[] {"TICK"});
+                manager.Update(new State {Entry = true, A = true, B = true, C = true, D = true, E = true});
+
+                Assert.AreEqual(Result.Unknown, manager.Result);
+                Assert.AreEqual(0UL, manager.TickCount);
+                Assert.IsTrue(stages.SequenceEqual(sequence));
+
+                stages.Enqueue("TICK");
+                sequence.AddRange(new[] {"TICK", "E"});
+                manager.Update(new State {Entry = true, A = true, B = true, C = true, D = true, E = true});
+
+                Assert.AreEqual(Result.Success, manager.Result);
+                Assert.AreEqual(1UL, manager.TickCount);
+                Assert.IsTrue(stages.SequenceEqual(sequence));
+
+                manager.Reset();
+                stages.Clear();
+                sequence.Clear();
+            }
+        }
+
         private class State
         {
+            public bool Entry;
             public bool A;
             public bool B;
             public bool C;
+            public bool D;
+            public bool E;
         }
 
         private class TestConditionNode : Node
@@ -566,6 +656,30 @@ namespace Yggdrasil.Tests
                 await Yield;
 
                 Stages.Enqueue(PrintD);
+
+                return Conditional((State) State) ? Result.Success : Result.Failure;
+            }
+        }
+
+        private class TestRunningConditionNode : Node
+        {
+            public string PrintA;
+
+            public Queue<string> Stages;
+
+            public Func<State, bool> Conditional;
+
+            public TestRunningConditionNode(CoroutineManager manager) : base(manager) { }
+
+            protected override async Coroutine<Result> Tick()
+            {
+                await Yield;
+                await Yield;
+                await Yield;
+                await Yield;
+                await Yield;
+
+                Stages.Enqueue(PrintA);
 
                 return Conditional((State) State) ? Result.Success : Result.Failure;
             }

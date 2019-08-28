@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using Yggdrasil.Coroutines;
 using Yggdrasil.Enums;
 
@@ -28,7 +27,11 @@ namespace Yggdrasil.Nodes
 
                 if (value != null && value.Count > 0)
                 {
-                    _threads.AddRange(value.Select(n => new CoroutineThread(n, false, 1)));
+                    foreach (var n in value)
+                    {
+                        var thread = new CoroutineThread(n, false, 1);
+                        _threads.Add(thread);
+                    }
                 }
             }
         }
@@ -50,7 +53,7 @@ namespace Yggdrasil.Nodes
                 Manager.ProcessThreadAsDependency(thread);
             }
 
-            while (_threads.Any(t => !t.IsComplete))
+            while (Continue())
             {
                 await Yield;
 
@@ -61,13 +64,22 @@ namespace Yggdrasil.Nodes
                 }
             }
 
-            var result = _threads.Any(t => t.Result == Result.Success) 
-                ? Result.Success 
-                : Result.Failure;
+            var result = Result.Failure;
 
-            foreach (var thread in _threads) { thread.Reset(); }
+            foreach (var thread in _threads)
+            {
+                if (thread.Result == Result.Success) { result = Result.Success; }
+                thread.Reset();
+            }
 
             return result;
+        }
+
+        private bool Continue()
+        {
+            var processing = false;
+            foreach (var thread in _threads) { processing = processing || !thread.IsComplete; }
+            return processing;
         }
 
         private static bool DefaultConditional(object s)
