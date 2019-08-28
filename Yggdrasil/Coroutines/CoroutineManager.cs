@@ -69,7 +69,7 @@ namespace Yggdrasil.Coroutines
             }
         }
 
-        internal dynamic State { get; private set; }
+        internal object State { get; private set; }
 
         public event EventHandler<Node> NodeActiveEventHandler;
 

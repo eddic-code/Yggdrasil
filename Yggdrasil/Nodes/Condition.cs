@@ -35,21 +35,21 @@ namespace Yggdrasil.Nodes
 {
     public class Condition : Node
     {
-        public Condition(CoroutineManager manager, Func<dynamic, bool> conditional) : base(manager)
+        public Condition(CoroutineManager manager, Func<object, bool> conditional) : base(manager)
         {
             Conditional = conditional;
         }
 
         public Condition(CoroutineManager manager) : base(manager) { }
 
-        public Func<dynamic, bool> Conditional { get; set; } = DefaultConditional;
+        public Func<object, bool> Conditional { get; set; } = DefaultConditional;
 
         protected override Coroutine<Result> Tick()
         {
             return Conditional(State) ? Success : Failure;
         }
 
-        private static bool DefaultConditional(dynamic s)
+        private static bool DefaultConditional(object s)
         {
             return true;
         }

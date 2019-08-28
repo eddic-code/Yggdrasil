@@ -44,7 +44,7 @@ namespace Yggdrasil.Nodes
         protected Coroutine Yield => Manager.Yield;
         protected Coroutine<Result> Success => Coroutine<Result>.CreateWith(Result.Success);
         protected Coroutine<Result> Failure => Coroutine<Result>.CreateWith(Result.Failure);
-        protected dynamic State => Manager.State;
+        protected object State => Manager.State;
 
         public string Guid { get; set; }
 
