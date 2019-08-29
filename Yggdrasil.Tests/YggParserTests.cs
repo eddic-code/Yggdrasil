@@ -58,14 +58,14 @@ namespace Yggdrasil.Tests
             state.SecondName = "edelgard";
             state.ThirdName = "dimitri";
 
-            var scriptA = compiler.CompileDynamicConditional(textA);
-            Assert.IsTrue(scriptA(state));
+            var scriptA = compiler.DynamicStateCompiledConditional(textA);
+            Assert.IsTrue(scriptA.DynamicInvoke(state));
 
-            var scriptB = compiler.CompileDynamicConditional(textB);
-            Assert.IsFalse(scriptB(state));
+            var scriptB = compiler.DynamicStateCompiledConditional(textB);
+            Assert.IsFalse(scriptB.DynamicInvoke(state));
 
-            var scriptC = compiler.CompileDynamicConditional(textC);
-            Assert.IsTrue(scriptC(state));
+            var scriptC = compiler.DynamicStateCompiledConditional(textC);
+            Assert.IsTrue(scriptC.DynamicInvoke(state));
         }
 
         [TestMethod]
@@ -87,14 +87,14 @@ namespace Yggdrasil.Tests
             state.SecondName = "edelgard";
             state.ThirdName = "dimitri";
 
-            var scriptA = compiler.CompileDynamicConditionalFull(textA);
-            Assert.IsTrue(scriptA(state));
+            var scriptA = compiler.DynamicStateCompiledConditional(textA);
+            Assert.IsTrue(scriptA.DynamicInvoke(state));
 
-            var scriptB = compiler.CompileDynamicConditionalFull(textB);
-            Assert.IsFalse(scriptB(state));
+            var scriptB = compiler.DynamicStateCompiledConditional(textB);
+            Assert.IsFalse(scriptB.DynamicInvoke(state));
 
-            var scriptC = compiler.CompileDynamicConditionalFull(textC);
-            Assert.IsTrue(scriptC(state));
+            var scriptC = compiler.DynamicStateCompiledConditional(textC);
+            Assert.IsTrue(scriptC.DynamicInvoke(state));
         }
     }
 }
