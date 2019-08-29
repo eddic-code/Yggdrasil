@@ -5,7 +5,7 @@ using System.Xml;
 
 namespace Yggdrasil.Serialization
 {
-    public static class CustomXmlParser
+    public static class YggParser
     {
         public static XmlDocument LoadFromFile(string path)
         {

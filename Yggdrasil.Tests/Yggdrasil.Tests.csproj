@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="XmlTests\escapeCharacterTest.xml">
+    <None Update="ParserTests\escapeCharacterTest.ygg">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
