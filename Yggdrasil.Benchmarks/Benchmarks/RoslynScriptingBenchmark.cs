@@ -16,10 +16,15 @@ namespace Yggdrasil.Benchmarks
     public class RoslynScriptingBenchmark
     {
         private object _dynamicState;
-        private GenericState _genericState;
+        private TestGenericState _testGenericState;
 
-        private Func<dynamic, bool> _conditionalBaseline;
-        private Func<dynamic, bool> _staticMethod;
+        private TestBaseConditional _derivedConditional;
+
+        private Func<TestGenericState, bool> _baseline;
+        private Func<TestGenericState, bool> _staticMethod;
+
+        private Func<dynamic, bool> _dynamicBaseline;
+        private Func<dynamic, bool> _dynamicStaticMethod;
         private Func<dynamic, bool> _wrappedConditional;
 
         private Func<dynamic, bool> _dynamicCompiledConditionalFunc;
@@ -31,7 +36,7 @@ namespace Yggdrasil.Benchmarks
         [GlobalSetup]
         public void Setup()
         {
-            _genericState = new GenericState {A = 1, B = 2, C = 3, D = 4};
+            _testGenericState = new TestGenericState {A = 1, B = 2, C = 3, D = 4};
 
             dynamic state = new ExpandoObject();
             state.A = 1;
@@ -43,72 +48,98 @@ namespace Yggdrasil.Benchmarks
             const string script = "state.A >= state.B || state.C <= state.D";
 
             var dynamicConditional = DynamicStateCompiledConditional(script);
-            var genericConditional = GenericStateCompiledConditional<GenericState>(script);
+            var genericConditional = GenericStateCompiledConditional<TestGenericState>(script);
 
+            _baseline = s => s.A >= s.B || s.C <= s.D;
             _staticMethod = Conditional;
-
-            _conditionalBaseline = s => s.A >= s.B || s.C <= s.D;
+            _dynamicStaticMethod = DynamicConditional;
+            _dynamicBaseline = s => s.A >= s.B || s.C <= s.D;
             _wrappedConditional = WrappedDynamicStateConditional(script);
             _dynamicCompiledConditional = dynamicConditional;
             _genericCompiledConditional = genericConditional;
             _dynamicCompiledConditionalFunc = s => dynamicConditional.DynamicInvoke(s);
             _genericCompiledConditionalFunc = s => genericConditional.DynamicInvoke(s);
+            _derivedConditional = GenericStateCompiledInheritedConditional<TestGenericState>(script);
 
             // Warmup.
-            _conditionalBaseline(_dynamicState);
-            _staticMethod(_dynamicState);
+            _dynamicBaseline(_dynamicState);
+            _dynamicStaticMethod(_dynamicState);
             _wrappedConditional.DynamicInvoke(_dynamicState);
             _dynamicCompiledConditional.DynamicInvoke(_dynamicState);
-            _genericCompiledConditional.DynamicInvoke(_genericState);
+            _genericCompiledConditional.DynamicInvoke(_testGenericState);
             _dynamicCompiledConditionalFunc(_dynamicState);
-            _genericCompiledConditionalFunc(_genericState);
+            _genericCompiledConditionalFunc(_testGenericState);
+            _derivedConditional.Execute(_testGenericState);
         }
 
-        private static bool Conditional(dynamic state)
+        private static bool DynamicConditional(dynamic state)
+        {
+            return state.A >= state.B || state.C <= state.D;
+        }
+
+        private static bool Conditional(TestGenericState state)
         {
             return state.A >= state.B || state.C <= state.D;
         }
 
         [Benchmark]
-        public void Baseline()
+        public void BBaseline()
         {
-            _conditionalBaseline(_dynamicState);
+            _baseline(_testGenericState);
         }
 
         [Benchmark]
-        public void StaticMethod()
+        public void BStaticMethod()
         {
-            _staticMethod(_dynamicState);
+            _staticMethod(_testGenericState);
         }
 
         [Benchmark]
-        public void WrappedDynamicStateConditional()
+        public void BDynamicBaseline()
+        {
+            _dynamicBaseline(_dynamicState);
+        }
+
+        [Benchmark]
+        public void BDynamicStaticMethod()
+        {
+            _dynamicStaticMethod(_dynamicState);
+        }
+
+        [Benchmark]
+        public void BWrappedDynamicStateConditional()
         {
             _wrappedConditional.DynamicInvoke(_dynamicState);
         }
 
         [Benchmark]
-        public void DynamicStateCompiledConditionalDelegate()
+        public void BDynamicStateCompiledConditionalDelegate()
         {
             _dynamicCompiledConditional.DynamicInvoke(_dynamicState);
         }
 
         [Benchmark]
-        public void GenericStateCompiledConditionalDelegate()
+        public void BGenericStateCompiledConditionalDelegate()
         {
-            _genericCompiledConditional.DynamicInvoke(_genericState);
+            _genericCompiledConditional.DynamicInvoke(_testGenericState);
         }
 
         [Benchmark]
-        public void DynamicStateCompiledConditionalFunction()
+        public void BDynamicStateCompiledConditionalFunction()
         {
             _dynamicCompiledConditionalFunc(_dynamicState);
         }
 
         [Benchmark]
-        public void GenericStateCompiledConditionalFunction()
+        public void BGenericStateCompiledConditionalFunction()
         {
-            _genericCompiledConditionalFunc(_genericState);
+            _genericCompiledConditionalFunc(_testGenericState);
+        }
+
+        [Benchmark]
+        public void BDerivedConditional()
+        {
+            _derivedConditional.Execute(_testGenericState);
         }
 
         private static Func<dynamic, bool> WrappedDynamicStateConditional(string text)
@@ -194,6 +225,35 @@ namespace Yggdrasil.Benchmarks
             return function;
         }
 
+        private static TestBaseConditional GenericStateCompiledInheritedConditional<T>(string functionText)
+        {
+            var scriptText = $"using Yggdrasil.Benchmarks; public class YggEntry : TestBaseConditional {{ public override bool Execute(TestGenericState state){{ return {functionText}; }} }}";
+
+            var references = new List<MetadataReference> { MetadataReference.CreateFromFile(typeof(T).GetTypeInfo().Assembly.Location) };
+            var options = ScriptOptions.Default.AddReferences(references);
+            var script = CSharpScript.Create<bool>(scriptText, options);
+            var compilation = script.GetCompilation();
+
+            byte[] compiledAssembly;
+            using (var output = new MemoryStream())
+            {
+                var emitResult = compilation.Emit(output);
+
+                if (!emitResult.Success)
+                {
+                    throw new Exception("Compilation failed.");
+                }
+
+                compiledAssembly = output.ToArray();
+            }
+
+            var assembly = Assembly.Load(compiledAssembly);
+            var entryType = assembly.GetTypes().First(t => t.Name == "YggEntry");
+            var instance = (TestBaseConditional)Activator.CreateInstance(entryType);
+
+            return instance;
+        }
+
         public class StateWrapper
         {
             // ReSharper disable once InconsistentNaming
@@ -201,7 +261,12 @@ namespace Yggdrasil.Benchmarks
         }
     }
 
-    public class GenericState
+    public abstract class TestBaseConditional
+    {
+        public abstract bool Execute(TestGenericState state);
+    }
+
+    public class TestGenericState
     {
         public int A, B, C, D;
     }
