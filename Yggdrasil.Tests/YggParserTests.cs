@@ -48,7 +48,7 @@ namespace Yggdrasil.Tests
             const string textC = @"state.FirstName != state.SecondName && state.FirstName == state.ThirdName";
 
             var parser = new YggParser();
-            dynamic state = new ExpandoObject();
+            var state = new TestState();
 
             state.A = 1;
             state.B = 2;
@@ -59,18 +59,18 @@ namespace Yggdrasil.Tests
             state.SecondName = "edelgard";
             state.ThirdName = "dimitri";
 
-            var scriptA = parser.CompileDynamicConditional(textA);
+            var scriptA = parser.CompileConditional<TestState>(textA);
             Assert.IsTrue(scriptA.Execute(state));
 
-            var scriptB = parser.CompileDynamicConditional(textB);
+            var scriptB = parser.CompileConditional<TestState>(textB);
             Assert.IsFalse(scriptB.Execute(state));
 
-            var scriptC = parser.CompileDynamicConditional(textC);
+            var scriptC = parser.CompileConditional<TestState>(textC);
             Assert.IsTrue(scriptC.Execute(state));
         }
 
         [TestMethod]
-        public void ConditionalCompilationFullTest()
+        public void DynamicConditionalCompilationTest()
         {
             const string textA = @"state.A >= state.B || state.C <= state.D";
             const string textB = @"state.A >= state.B || state.C >= state.D";
@@ -96,6 +96,12 @@ namespace Yggdrasil.Tests
 
             var scriptC = parser.CompileDynamicConditional(textC);
             Assert.IsTrue(scriptC.Execute(state));
+        }
+
+        public class TestState
+        {
+            public int A, B, C, D, E;
+            public string FirstName, SecondName, ThirdName;
         }
     }
 }

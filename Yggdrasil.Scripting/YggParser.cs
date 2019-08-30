@@ -14,10 +14,14 @@ namespace Yggdrasil.Scripting
     {
         public BaseConditional CompileConditional<T>(string functionText)
         {
-            var scriptText = $@"using Yggdrasil.Benchmarks; 
+            var stateTypeName = typeof(T).FullName?.Replace("+", ".");
+            var namespaceName = typeof(T).GetTypeInfo().Namespace;
+
+            var scriptText = $@"using Yggdrasil.Scripting; 
+                                using {namespaceName};
                                 public class DerivedConditional : BaseConditional
                                 {{
-                                    public override bool Execute(object baseState){{ var state = (T)baseState; return {functionText}; }} 
+                                    public override bool Execute(object baseState){{ var state = ({stateTypeName})baseState; return {functionText}; }} 
                                 }}";
 
             var references = new List<MetadataReference>
@@ -52,7 +56,7 @@ namespace Yggdrasil.Scripting
 
         public BaseDynamicConditional CompileDynamicConditional(string functionText)
         {
-            var scriptText = $@"using Yggdrasil.Benchmarks;
+            var scriptText = $@"using Yggdrasil.Scripting; 
                                 using System.Dynamic;
                                 public class DerivedDynamicConditional : BaseDynamicConditional
                                 {{

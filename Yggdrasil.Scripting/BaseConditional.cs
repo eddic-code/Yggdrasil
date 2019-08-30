@@ -2,7 +2,7 @@
 {
     public abstract class BaseConditional
     {
-        public abstract bool Execute(object state);
+        public abstract bool Execute(object baseState);
     }
 
     public abstract class BaseConditional<T>
