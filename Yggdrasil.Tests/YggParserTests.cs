@@ -1,6 +1,6 @@
 ﻿using System.Dynamic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Yggdrasil.Serialization;
+using Yggdrasil.Scripting;
 
 namespace Yggdrasil.Tests
 {
@@ -11,7 +11,8 @@ namespace Yggdrasil.Tests
         [DeploymentItem("ParserTests\\escapeCharacterTest.ygg")]
         public void EscapeCharacterTest()
         {
-            var document = YggParser.LoadFromFile("ParserTests\\escapeCharacterTest.ygg");
+            var parser = new YggParser();
+            var document = parser.LoadFromFile("ParserTests\\escapeCharacterTest.ygg");
             
             const string innerTextA = @"state.A >= state.B || state.C <= state.D";
             Assert.AreEqual(innerTextA, document.SelectSingleNode("/Nodes/FilterA/Conditional").InnerText);
@@ -46,7 +47,7 @@ namespace Yggdrasil.Tests
             const string textB = @"state.A >= state.B || state.C >= state.D";
             const string textC = @"state.FirstName != state.SecondName && state.FirstName == state.ThirdName";
 
-            var compiler = new YggCompiler();
+            var parser = new YggParser();
             dynamic state = new ExpandoObject();
 
             state.A = 1;
@@ -58,14 +59,14 @@ namespace Yggdrasil.Tests
             state.SecondName = "edelgard";
             state.ThirdName = "dimitri";
 
-            var scriptA = compiler.DynamicStateCompiledConditional(textA);
-            Assert.IsTrue(scriptA.DynamicInvoke(state));
+            var scriptA = parser.CompileDynamicConditional(textA);
+            Assert.IsTrue(scriptA.Execute(state));
 
-            var scriptB = compiler.DynamicStateCompiledConditional(textB);
-            Assert.IsFalse(scriptB.DynamicInvoke(state));
+            var scriptB = parser.CompileDynamicConditional(textB);
+            Assert.IsFalse(scriptB.Execute(state));
 
-            var scriptC = compiler.DynamicStateCompiledConditional(textC);
-            Assert.IsTrue(scriptC.DynamicInvoke(state));
+            var scriptC = parser.CompileDynamicConditional(textC);
+            Assert.IsTrue(scriptC.Execute(state));
         }
 
         [TestMethod]
@@ -75,7 +76,7 @@ namespace Yggdrasil.Tests
             const string textB = @"state.A >= state.B || state.C >= state.D";
             const string textC = @"state.FirstName != state.SecondName && state.FirstName == state.ThirdName";
 
-            var compiler = new YggCompiler();
+            var parser = new YggParser();
             dynamic state = new ExpandoObject();
 
             state.A = 1;
@@ -87,14 +88,14 @@ namespace Yggdrasil.Tests
             state.SecondName = "edelgard";
             state.ThirdName = "dimitri";
 
-            var scriptA = compiler.DynamicStateCompiledConditional(textA);
-            Assert.IsTrue(scriptA.DynamicInvoke(state));
+            var scriptA = parser.CompileDynamicConditional(textA);
+            Assert.IsTrue(scriptA.Execute(state));
 
-            var scriptB = compiler.DynamicStateCompiledConditional(textB);
-            Assert.IsFalse(scriptB.DynamicInvoke(state));
+            var scriptB = parser.CompileDynamicConditional(textB);
+            Assert.IsFalse(scriptB.Execute(state));
 
-            var scriptC = compiler.DynamicStateCompiledConditional(textC);
-            Assert.IsTrue(scriptC.DynamicInvoke(state));
+            var scriptC = parser.CompileDynamicConditional(textC);
+            Assert.IsTrue(scriptC.Execute(state));
         }
     }
 }
