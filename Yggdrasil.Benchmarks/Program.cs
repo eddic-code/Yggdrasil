@@ -7,8 +7,8 @@ namespace Yggdrasil.Benchmarks
     {
         public static void Main(string[] args)
         {
-            //var benchmark = new RoslynScriptingBenchmark();
-            //benchmark.Setup();
+            var benchmark = new RoslynScriptingBenchmark();
+            benchmark.Setup();
 
             BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
 

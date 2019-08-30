@@ -20,6 +20,8 @@ namespace Yggdrasil.Benchmarks
 
         private TestBaseConditional _derivedConditional;
         private TestBaseDynamicConditional _derivedDynamicConditional;
+        private Func<TestGenericState, bool> _derivedFunction;
+        private Func<dynamic, bool> _derivedDynamicFunction;
 
         private Func<TestGenericState, bool> _baseline;
         private Func<TestGenericState, bool> _staticMethod;
@@ -60,8 +62,14 @@ namespace Yggdrasil.Benchmarks
             _genericCompiledConditional = genericConditional;
             _dynamicCompiledConditionalFunc = s => dynamicConditional.DynamicInvoke(s);
             _genericCompiledConditionalFunc = s => genericConditional.DynamicInvoke(s);
-            _derivedConditional = GenericStateCompiledInheritedConditional<TestGenericState>(script);
-            _derivedDynamicConditional = DynamicStateCompiledInheritedConditional<TestGenericState>(script);
+
+            var derivedConditional = GenericStateCompiledInheritedConditional<TestGenericState>(script);
+            _derivedConditional = derivedConditional;
+            _derivedFunction = s => derivedConditional.Execute(s);
+
+            var derivedDynamicConditional = DynamicStateCompiledInheritedConditional(script);
+            _derivedDynamicConditional = derivedDynamicConditional;
+            _derivedDynamicFunction = s => derivedDynamicConditional.Execute(s);
 
             // Warmup.
             _dynamicBaseline(_dynamicState);
@@ -73,6 +81,8 @@ namespace Yggdrasil.Benchmarks
             _genericCompiledConditionalFunc(_testGenericState);
             _derivedConditional.Execute(_testGenericState);
             _derivedDynamicConditional.Execute(_dynamicState);
+            _derivedFunction(_testGenericState);
+            _derivedDynamicFunction(_dynamicState);
         }
 
         private static bool DynamicConditional(dynamic state)
@@ -149,6 +159,18 @@ namespace Yggdrasil.Benchmarks
         public void BDerivedDynamicConditional()
         {
             _derivedDynamicConditional.Execute(_dynamicState);
+        }
+
+        [Benchmark]
+        public void BDerivedFunction()
+        {
+            _derivedFunction(_testGenericState);
+        }
+
+        [Benchmark]
+        public void BDerivedDynamicFunction()
+        {
+            _derivedDynamicFunction(_dynamicState);
         }
 
         private static Func<dynamic, bool> WrappedDynamicStateConditional(string text)
@@ -263,13 +285,13 @@ namespace Yggdrasil.Benchmarks
             return instance;
         }
 
-        private static TestBaseDynamicConditional DynamicStateCompiledInheritedConditional<T>(string functionText)
+        private TestBaseDynamicConditional DynamicStateCompiledInheritedConditional(string functionText)
         {
-            var scriptText = $"using Yggdrasil.Benchmarks; public class YggEntry : TestBaseDynamicConditional {{ public override bool Execute(dynamic state){{ return {functionText}; }} }}";
+            var scriptText = $"using Yggdrasil.Benchmarks; using System.Dynamic; public class YggEntry : TestBaseDynamicConditional {{ public override bool Execute(dynamic state){{ return {functionText}; }} }}";
 
             var references = new List<MetadataReference>{
                 MetadataReference.CreateFromFile(typeof(Microsoft.CSharp.RuntimeBinder.RuntimeBinderException).GetTypeInfo().Assembly.Location),
-                MetadataReference.CreateFromFile(typeof(T).GetTypeInfo().Assembly.Location),
+                MetadataReference.CreateFromFile(typeof(TestGenericState).GetTypeInfo().Assembly.Location),
                 MetadataReference.CreateFromFile(typeof(System.Runtime.CompilerServices.DynamicAttribute).GetTypeInfo().Assembly.Location)};
 
             var options = ScriptOptions.Default.AddReferences(references);
