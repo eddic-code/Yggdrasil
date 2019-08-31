@@ -1,0 +1,25 @@
+{
+    "name": "yggdrasil-script-extension",
+    "displayName": "Yggdrasil Script Extension",
+    "description": "Highlighting for Yggdrasil scripts.",
+    "version": "0.0.1",
+    "engines": {
+        "vscode": "^1.37.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [{
+            "id": "ygg",
+            "aliases": ["Yggdrasil Script", "ygg"],
+            "extensions": [".ygg"],
+            "configuration": "./language-configuration.json"
+        }],
+        "grammars": [{
+            "language": "ygg",
+            "scopeName": "source.yggdrasil",
+            "path": "./syntaxes/ygg.tmLanguage.json"
+        }]
+    }
+}
