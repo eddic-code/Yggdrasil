@@ -1,0 +1,25 @@
+{
+	"name": "Yggdrasil Color Theme",
+	"editor.tokenColorCustomizations": {
+		"textMateRules": [
+			{
+				"scope": "keyword.control",
+				"settings": {
+					"foreground": "#93cc7c"
+				}
+            },
+            {
+				"scope": "entity.name.tag.localname.xml",
+				"settings": {
+					"foreground": "#987db5"
+				}
+			},
+			{
+				"scope": "entity.name.function",
+				"settings": {
+					"foreground": "#808080"
+				}
+			}
+		]
+	}
+}

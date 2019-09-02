@@ -15,29 +15,29 @@ namespace Yggdrasil.Tests
             var document = parser.LoadFromFile("ParserTests\\escapeCharacterTest.ygg");
             
             const string innerTextA = @"state.A >= state.B || state.C <= state.D";
-            Assert.AreEqual(innerTextA, document.SelectSingleNode("/Nodes/FilterA/Conditional").InnerText);
+            Assert.AreEqual(innerTextA, document.SelectSingleNode("/__Main/FilterA/Conditional").InnerText);
 
-            const string attributeTextB = @"state.A >= state.B || state.C <= state.D";
-            Assert.AreEqual(attributeTextB, document.SelectSingleNode("/Nodes/FilterB").Attributes[0].Value);
+            const string attributeTextB = @"state.A >= state.B && state.C <= state.D";
+            Assert.AreEqual(attributeTextB, document.SelectSingleNode("/__Main/FilterB").Attributes[0].Value);
 
             const string attributeTextC = "state.A == \"hello\"";
-            Assert.AreEqual(attributeTextC, document.SelectSingleNode("/Nodes/FilterC").Attributes[0].Value);
+            Assert.AreEqual(attributeTextC, document.SelectSingleNode("/__Main/FilterC").Attributes[0].Value);
 
             const string attributeTextD = "state.A == \"hello\" && state.C <= state.N";
-            Assert.AreEqual(attributeTextD, document.SelectSingleNode("/Nodes/FilterD").Attributes[0].Value);
+            Assert.AreEqual(attributeTextD, document.SelectSingleNode("/__Main/FilterD").Attributes[0].Value);
 
             const string attributeTextA0 = "state.A == \"hello\" && state.C <= state.N || state.D > 10";
-            Assert.AreEqual(attributeTextA0, document.SelectSingleNode("/Nodes/FilterD/A").Attributes[0].Value);
-            Assert.AreEqual(attributeTextA0, document.SelectSingleNode("/Nodes/FilterD/A").Attributes[1].Value);
+            Assert.AreEqual(attributeTextA0, document.SelectSingleNode("/__Main/FilterD/NodeA").Attributes[0].Value);
+            Assert.AreEqual(attributeTextA0, document.SelectSingleNode("/__Main/FilterD/NodeA").Attributes[1].Value);
 
             const string attributeTextB0 = "state.A >= state.B || state.C <= state.D";
             const string attributeTextB1 = "state.A > state.B || state.C < state.D";
 
-            Assert.AreEqual(attributeTextB0, document.SelectSingleNode("/Nodes/FilterD/A/B").Attributes[0].Value);
-            Assert.AreEqual(attributeTextB1, document.SelectSingleNode("/Nodes/FilterD/A/B").InnerText);
+            Assert.AreEqual(attributeTextB0, document.SelectSingleNode("/__Main/FilterD/NodeA/NodeB").Attributes[0].Value);
+            Assert.AreEqual(attributeTextB1, document.SelectSingleNode("/__Main/FilterD/NodeA/NodeB").InnerText);
 
-            Assert.AreEqual(attributeTextB1, document.SelectSingleNode("/Nodes/FilterD/A/C").Attributes[0].Value);
-            Assert.AreEqual(attributeTextB0, document.SelectSingleNode("/Nodes/FilterD/A/C").InnerText);
+            Assert.AreEqual(attributeTextB1, document.SelectSingleNode("/__Main/FilterD/NodeA/NodeC").Attributes[0].Value);
+            Assert.AreEqual(attributeTextB0, document.SelectSingleNode("/__Main/FilterD/NodeA/NodeC").InnerText);
         }
 
         [TestMethod]

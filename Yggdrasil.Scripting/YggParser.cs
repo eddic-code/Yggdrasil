@@ -105,106 +105,11 @@ namespace Yggdrasil.Scripting
             return document;
         }
 
-        private static IEnumerable<char> ConvertToXml(string path)
-        {
-	        const char escape = '|';
-
-	        using (var stream = new StreamReader(path))
-	        {
-		        var openingCdata = "<![CDATA[".ToCharArray();
-		        var closeingCdata = "]]>".ToCharArray();
-		        var prev = '\0';
-		        var started = false;
-		        var ampersand = "&amp;".ToCharArray();
-		        var lessThan = "&lt;".ToCharArray();
-		        var greaterThan = "&gt;".ToCharArray();
-		        var quotes = "&quot;".ToCharArray();
-
-		        while (!stream.EndOfStream)
-		        {
-			        var next = (char)stream.Read();
-
-			        if (prev == '"' && next == escape)
-			        {
-				        yield return prev;
-
-				        var n0 = '\0';
-				        var started0 = false;
-
-				        while (!stream.EndOfStream)
-				        {
-					        var n = (char)stream.Read();
-
-					        if (n0 == escape && n == '"') { yield return n; break; }
-
-					        if (n == '&')
-					        {
-						        if (n0 != '&') { yield return n0; }
-						        foreach (var c in ampersand) { yield return c; }
-						        started0 = false;
-						        n0 = n;
-					        }
-					        else if (n == '"')
-					        {
-						        if (n0 != '"') { yield return n0; }
-						        foreach (var c in quotes) { yield return c; }
-						        started0 = false;
-						        n0 = n;
-					        }
-					        else if (n == '<')
-					        {
-						        if (n0 != '<') { yield return n0; }
-						        foreach (var c in lessThan) { yield return c; }
-						        started0 = false;
-						        n0 = n;
-					        }
-					        else if (n == '>')
-					        {
-						        if (n0 != '>') { yield return n0; }
-						        foreach (var c in greaterThan) { yield return c; }
-						        started0 = false;
-						        n0 = n;
-					        }
-					        else if (started0)
-					        {
-						        yield return n0;
-						        n0 = n;
-					        }
-					        else
-					        {
-						        n0 = n;
-						        started0 = true;
-					        }
-				        }
-
-				        started = false;
-			        }
-			        else if (prev == '>' && next == escape)
-			        {
-				        yield return prev;
-
-				        foreach (var c in openingCdata) { yield return c; }
-
-				        started = false;
-			        }
-			        else if (prev == escape && next == '<')
-			        {
-				        foreach (var c in closeingCdata) { yield return c; }
-
-				        started = false;
-				        yield return next;
-			        }
-			        else if (started) { yield return prev; prev = next; }
-			        else { prev = next; started = true; }
-		        }
-	        }
-        }
-
-        private static string ConvertToXml2(string path)
+        private static string ConvertToXml(string path)
         {
             var text = File.ReadAllText(path);
 
-            var innerScriptRegex = new Regex(">\\s*<\\s*#\\s*>\\s*(.*?)\\s*<\\s*/#\\s*>");
+            var innerScriptRegex = new Regex(">[\\s\n\r]*<[\\s\n\r]*#[\\s\n\r]*>\\s*(.*?)[\\s\n\r]*<[\\s\n\r]*/#[\\s\n\r]*>[\\s\n\r]*");
             var innerScriptMatches = innerScriptRegex.Matches(text);
 
             foreach (var m in innerScriptMatches)
@@ -212,8 +117,8 @@ namespace Yggdrasil.Scripting
                 var match = (Match)m;
                 var innerText = match.Value;
 
-                var cleanText = Regex.Replace(innerText, ">\\s*<\\s*#\\s*>\\s*", "");
-                cleanText = Regex.Replace(cleanText, "\\s*<\\s*/#\\s*>", "");
+                var cleanText = Regex.Replace(innerText, ">[\\s\n\r]*<[\\s\n\r]*#[\\s\n\r]*>[\\s\n\r]*", "");
+                cleanText = Regex.Replace(cleanText, "[\\s\n\r]*<[\\s\n\r]*/#[\\s\n\r]*>[\\s\n\r]*", "");
 
                 cleanText = cleanText.Replace("&", "&amp;")
                     .Replace("\"", "&quot;")
@@ -221,10 +126,12 @@ namespace Yggdrasil.Scripting
                     .Replace(">", "&gt;")
                     .Insert(0, ">");
 
+                cleanText = cleanText.Trim(' ').Trim('\n').Trim('\r');
+
                 text = text.Replace(innerText, cleanText);
             }
 
-            var attributeScriptRegex = new Regex("\\s*=\\s*<\\s*#\\s*>\\s*(.*?)\\s*<\\s*/#\\s*>");
+            var attributeScriptRegex = new Regex("[\\s\n\r]*=[\\s\n\r]*<[\\s\n\r]*#[\\s\n\r]*>[\\s\n\r]*(.*?)[\\s\n\r]*[\\s\n\r]*/#[\\s\n\r]*>");
             var attributeScriptMatches = attributeScriptRegex.Matches(text);
 
             foreach (var m in attributeScriptMatches)
@@ -232,8 +139,8 @@ namespace Yggdrasil.Scripting
                 var match = (Match)m;
                 var innerText = match.Value;
 
-                var cleanText = Regex.Replace(innerText, "\\s*=\\s*<\\s*#\\s*>\\s*", "");
-                cleanText = Regex.Replace(cleanText, "\\s*<\\s*/#\\s*>", "");
+                var cleanText = Regex.Replace(innerText, "[\\s\n\r]*=[\\s\n\r]*<[\\s\n\r]*#[\\s\n\r]*>[\\s\n\r]*", "");
+                cleanText = Regex.Replace(cleanText, "[\\s\n\r]*<[\\s\n\r]*/#[\\s\n\r]*>", "");
 
                 cleanText = cleanText.Replace("&", "&amp;")
                     .Replace("\"", "&quot;")
@@ -241,12 +148,16 @@ namespace Yggdrasil.Scripting
                     .Replace(">", "&gt;")
                     .Insert(0, "\"");
 
-                cleanText = cleanText.Insert(cleanText.Length - 1, "\"");
+                cleanText = cleanText.Insert(0, "=");
+                cleanText = cleanText.Insert(cleanText.Length, "\"");
+                cleanText = cleanText.Trim(' ').Trim('\n').Trim('\r');
 
                 text = text.Replace(innerText, cleanText);
             }
 
-            return text;
+            text = text.Insert(0, "<__Main>");
+
+            return text.Insert(text.Length, "</__Main>");
         }
     }
 }
