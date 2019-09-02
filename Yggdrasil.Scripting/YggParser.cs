@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using System.Xml;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Scripting;
@@ -197,6 +198,55 @@ namespace Yggdrasil.Scripting
 			        else { prev = next; started = true; }
 		        }
 	        }
+        }
+
+        private static string ConvertToXml2(string path)
+        {
+            var text = File.ReadAllText(path);
+
+            var innerScriptRegex = new Regex(">\\s*<\\s*#\\s*>\\s*(.*?)\\s*<\\s*/#\\s*>");
+            var innerScriptMatches = innerScriptRegex.Matches(text);
+
+            foreach (var m in innerScriptMatches)
+            {
+                var match = (Match)m;
+                var innerText = match.Value;
+
+                var cleanText = Regex.Replace(innerText, ">\\s*<\\s*#\\s*>\\s*", "");
+                cleanText = Regex.Replace(cleanText, "\\s*<\\s*/#\\s*>", "");
+
+                cleanText = cleanText.Replace("&", "&amp;")
+                    .Replace("\"", "&quot;")
+                    .Replace("<", "&lt;")
+                    .Replace(">", "&gt;")
+                    .Insert(0, ">");
+
+                text = text.Replace(innerText, cleanText);
+            }
+
+            var attributeScriptRegex = new Regex("\\s*=\\s*<\\s*#\\s*>\\s*(.*?)\\s*<\\s*/#\\s*>");
+            var attributeScriptMatches = attributeScriptRegex.Matches(text);
+
+            foreach (var m in attributeScriptMatches)
+            {
+                var match = (Match)m;
+                var innerText = match.Value;
+
+                var cleanText = Regex.Replace(innerText, "\\s*=\\s*<\\s*#\\s*>\\s*", "");
+                cleanText = Regex.Replace(cleanText, "\\s*<\\s*/#\\s*>", "");
+
+                cleanText = cleanText.Replace("&", "&amp;")
+                    .Replace("\"", "&quot;")
+                    .Replace("<", "&lt;")
+                    .Replace(">", "&gt;")
+                    .Insert(0, "\"");
+
+                cleanText = cleanText.Insert(cleanText.Length - 1, "\"");
+
+                text = text.Replace(innerText, cleanText);
+            }
+
+            return text;
         }
     }
 }
