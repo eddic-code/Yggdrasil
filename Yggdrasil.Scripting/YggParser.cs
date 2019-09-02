@@ -13,6 +13,8 @@ namespace Yggdrasil.Scripting
 {
     public class YggParser
     {
+        public List<Type> NodeTypes { get; set; } = new List<Type>();
+
         public BaseConditional CompileConditional<T>(string functionText)
         {
             var stateTypeName = typeof(T).FullName?.Replace("+", ".");
@@ -108,51 +110,30 @@ namespace Yggdrasil.Scripting
         private static string ConvertToXml(string path)
         {
             var text = File.ReadAllText(path);
+            var scriptRegex = new Regex("[>=]*[\\s\n\r]*'[\\s\n\r]*(.*?)[\\s\n\r]*'[\\s\n\r]*<*");
+            var innerOpening = new Regex(">[\\s\n\r]*'[\\s\n\r]*");
+            var innerClosing = new Regex("[\\s\n\r]*'[\\s\n\r]*<");
+            var attributeOpening = new Regex("=[\\s\n\r]*'[\\s\n\r]*");
+            var scriptMatches = scriptRegex.Matches(text);
 
-            var innerScriptRegex = new Regex(">[\\s\n\r]*<[\\s\n\r]*#[\\s\n\r]*>\\s*(.*?)[\\s\n\r]*<[\\s\n\r]*/#[\\s\n\r]*>[\\s\n\r]*");
-            var innerScriptMatches = innerScriptRegex.Matches(text);
-
-            foreach (var m in innerScriptMatches)
+            foreach (var m in scriptMatches)
             {
                 var match = (Match)m;
-                var innerText = match.Value;
+                var matchText = match.Value;
+                var innerText = match.Groups[1].Value;
+                var cleanText = matchText;
 
-                var cleanText = Regex.Replace(innerText, ">[\\s\n\r]*<[\\s\n\r]*#[\\s\n\r]*>[\\s\n\r]*", "");
-                cleanText = Regex.Replace(cleanText, "[\\s\n\r]*<[\\s\n\r]*/#[\\s\n\r]*>[\\s\n\r]*", "");
+                if (innerOpening.IsMatch(cleanText)) { cleanText = innerOpening.Replace(cleanText, ">"); }
+                if (innerClosing.IsMatch(cleanText)) { cleanText = innerClosing.Replace(cleanText, "<"); }
+                if (attributeOpening.IsMatch(cleanText)) { cleanText = attributeOpening.Replace(cleanText, "='"); }
 
-                cleanText = cleanText.Replace("&", "&amp;")
+                var cleanInnerText = innerText.Replace("&", "&amp;")
                     .Replace("\"", "&quot;")
                     .Replace("<", "&lt;")
-                    .Replace(">", "&gt;")
-                    .Insert(0, ">");
+                    .Replace(">", "&gt;");
 
-                cleanText = cleanText.Trim(' ').Trim('\n').Trim('\r');
-
-                text = text.Replace(innerText, cleanText);
-            }
-
-            var attributeScriptRegex = new Regex("[\\s\n\r]*=[\\s\n\r]*<[\\s\n\r]*#[\\s\n\r]*>[\\s\n\r]*(.*?)[\\s\n\r]*[\\s\n\r]*/#[\\s\n\r]*>");
-            var attributeScriptMatches = attributeScriptRegex.Matches(text);
-
-            foreach (var m in attributeScriptMatches)
-            {
-                var match = (Match)m;
-                var innerText = match.Value;
-
-                var cleanText = Regex.Replace(innerText, "[\\s\n\r]*=[\\s\n\r]*<[\\s\n\r]*#[\\s\n\r]*>[\\s\n\r]*", "");
-                cleanText = Regex.Replace(cleanText, "[\\s\n\r]*<[\\s\n\r]*/#[\\s\n\r]*>", "");
-
-                cleanText = cleanText.Replace("&", "&amp;")
-                    .Replace("\"", "&quot;")
-                    .Replace("<", "&lt;")
-                    .Replace(">", "&gt;")
-                    .Insert(0, "\"");
-
-                cleanText = cleanText.Insert(0, "=");
-                cleanText = cleanText.Insert(cleanText.Length, "\"");
-                cleanText = cleanText.Trim(' ').Trim('\n').Trim('\r');
-
-                text = text.Replace(innerText, cleanText);
+                cleanText = cleanText.Replace(innerText, cleanInnerText);
+                text = text.Replace(matchText, cleanText);
             }
 
             text = text.Insert(0, "<__Main>");
