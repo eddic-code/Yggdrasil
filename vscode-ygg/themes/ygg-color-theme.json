@@ -15,7 +15,7 @@
 				}
 			},
 			{
-				"scope": "entity.name.function",
+				"scope": "entity.name.script",
 				"settings": {
 					"foreground": "#808080"
 				}

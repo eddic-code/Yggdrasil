@@ -1,33 +1,33 @@
 <FilterA Name="Entry">
-  <Conditional>'state.A >= state.B || state.C <= state.D'</Conditional>
+  <Conditional>`state.A >= state.B || state.C <= state.D`</Conditional>
   <Node/>
 </FilterA>
 
-<FilterB Conditional='state.A >= state.B && state.C <= state.D'>
+<FilterB Conditional=`state.A >= state.B && state.C <= state.D`>
   <Node/>
 </FilterB>
 
-<FilterC Conditional='state.A == "hello"'>
+<FilterC Conditional=`state.A == "hello"`>
   <Node/>
 </FilterC>
 
-<FilterD Conditional='state.A == "hello" && state.C <= state.N'>
-  <NodeA Conditional='state.A == "hello" && state.C <= state.N || state.D > 10' Conditional2='state.A == "hello" && state.C <= state.N || state.D > 10'>
-    <NodeB Conditional='state.A >= state.B || state.C <= state.D'>
-      'state.A > state.B || state.C < state.D'
+<FilterD Conditional=`state.A == "hello" && state.C <= state.N`>
+  <NodeA Conditional=`state.A == "hello" && state.C <= state.N || state.D > 10` Conditional2=`state.A == "hello" && state.C <= state.N || state.D > 10`>
+    <NodeB Conditional=`state.A >= state.B || state.C <= state.D`>
+      `state.A > state.B || state.C < state.D`
     </NodeB>
-    <NodeC Conditional='state.A > state.B || state.C < state.D'>
-      '
+    <NodeC Conditional=`state.A > state.B || state.C < state.D`>
+      `
         state.A >= state.B || state.C <= state.D
-      '
+      `
     </NodeC>
-    <NodeD Conditional='     
-    state.A > state.B || state.C < state.D            '>
-      '
-        state.A >= state.B || state.C <= state.D'
+    <NodeD Conditional=`     
+    state.A > state.B || state.C < state.D            `>
+      `
+        state.A >= state.B || state.C <= state.D`
     </NodeD>
     <NodeE>
-      '
+      `
         var manager = new CoroutineManager();
         var root = new Sequence(manager);
         var stages = new Queue<string>();
@@ -36,7 +36,7 @@
         Assert.AreEqual(Result.Unknown, manager.Result);
         Assert.AreEqual(0UL, manager.TickCount);
         manager.Update(new State { A = true, B = true, C = true});
-      '
+      `
     </NodeE>
   </NodeA>
 </FilterD>

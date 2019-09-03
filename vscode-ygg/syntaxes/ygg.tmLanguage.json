@@ -13,9 +13,9 @@
 			"end": "(?=$)"
 		},
 		{
-			"name": "entity.name.function",
-			"begin": "'",
-			"end": "'",
+			"name": "entity.name.script",
+			"begin": "`",
+			"end": "`",
 			"patterns": [
 				{
 					"include": "source.cs"
@@ -313,9 +313,9 @@
 		"tagStuff": {
 			"patterns": [
 				{
-					"name": "entity.name.function",
-					"begin": "'",
-					"end": "'",
+					"name": "entity.name.script",
+					"begin": "`",
+					"end": "`",
 					"patterns": [
 						{
 							"include": "source.cs"

@@ -15,11 +15,11 @@ namespace Yggdrasil.Scripting
 {
     public class YggParser
     {
-        private static readonly Regex _scriptRegex = new Regex("[>=]*[\\s\n\r]*'[\\s\n\r]*(.*?)[\\s\n\r]*'[\\s\n\r]*<*", RegexOptions.Singleline | RegexOptions.Compiled);
-        private static readonly Regex _innerOpening = new Regex(">[\\s\n\r]*'[\\s\n\r]*", RegexOptions.Compiled);
-        private static readonly Regex _innerClosing = new Regex("[\\s\n\r]*'[\\s\n\r]*<", RegexOptions.Compiled);
-        private static readonly Regex _attributeOpening = new Regex("=[\\s\n\r]*'[\\s\n\r]*", RegexOptions.Compiled);
-        private static readonly Regex _attributeClosing = new Regex("[\\s\n\r]*'", RegexOptions.Compiled);
+        private static readonly Regex _scriptRegex = new Regex("[>=]*[\\s\n\r]*`[\\s\n\r]*(.*?)[\\s\n\r]*`[\\s\n\r]*<*", RegexOptions.Singleline | RegexOptions.Compiled);
+        private static readonly Regex _innerOpening = new Regex(">[\\s\n\r]*`[\\s\n\r]*", RegexOptions.Compiled);
+        private static readonly Regex _innerClosing = new Regex("[\\s\n\r]*`[\\s\n\r]*<", RegexOptions.Compiled);
+        private static readonly Regex _attributeOpening = new Regex("=[\\s\n\r]*`[\\s\n\r]*", RegexOptions.Compiled);
+        private static readonly Regex _attributeClosing = new Regex("[\\s\n\r]*`", RegexOptions.Compiled);
 
         private readonly YggParserConfig _config;
 
@@ -139,8 +139,8 @@ namespace Yggdrasil.Scripting
                 if (_innerClosing.IsMatch(cleanText)) { cleanText = _innerClosing.Replace(cleanText, "<"); }
                 if (_attributeOpening.IsMatch(cleanText))
                 {
-                    cleanText = _attributeOpening.Replace(cleanText, "='");
-                    cleanText = _attributeClosing.Replace(cleanText, "'");
+                    cleanText = _attributeOpening.Replace(cleanText, "=\"");
+                    cleanText = _attributeClosing.Replace(cleanText, "\"");
                 }
 
                 var cleanInnerText = innerText.Replace("&", "&amp;")
