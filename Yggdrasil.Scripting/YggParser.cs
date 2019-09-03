@@ -1,21 +1,54 @@
-﻿using System;
+﻿#region License
+
+// // /*
+// // MIT License
+// //
+// // Copyright (c) 2019 eddic-code
+// //
+// // Permission is hereby granted, free of charge, to any person obtaining a copy
+// // of this software and associated documentation files (the "Software"), to deal
+// // in the Software without restriction, including without limitation the rights
+// // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// // copies of the Software, and to permit persons to whom the Software is
+// // furnished to do so, subject to the following conditions:
+// //
+// // The above copyright notice and this permission notice shall be included in all
+// // copies or substantial portions of the Software.
+// //
+// // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// // AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// // SOFTWARE.
+// //
+// // */
+
+#endregion
+
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using System.Xml;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Scripting;
 using Microsoft.CodeAnalysis.Scripting;
+using Microsoft.CSharp.RuntimeBinder;
 using Yggdrasil.ScriptTypes;
 
 namespace Yggdrasil.Scripting
 {
     public class YggParser
     {
-        private static readonly Regex _scriptRegex = new Regex("[>=]*[\\s\n\r]*`[\\s\n\r]*(.*?)[\\s\n\r]*`[\\s\n\r]*<*", RegexOptions.Singleline | RegexOptions.Compiled);
+        private static readonly Regex _scriptRegex = new Regex("[>=]*[\\s\n\r]*`[\\s\n\r]*(.*?)[\\s\n\r]*`[\\s\n\r]*<*",
+            RegexOptions.Singleline | RegexOptions.Compiled);
+
         private static readonly Regex _innerOpening = new Regex(">[\\s\n\r]*`[\\s\n\r]*", RegexOptions.Compiled);
         private static readonly Regex _innerClosing = new Regex("[\\s\n\r]*`[\\s\n\r]*<", RegexOptions.Compiled);
         private static readonly Regex _attributeOpening = new Regex("=[\\s\n\r]*`[\\s\n\r]*", RegexOptions.Compiled);
@@ -34,26 +67,33 @@ namespace Yggdrasil.Scripting
 
         public List<Type> NodeTypes { get; }
 
-        public (BaseConditional Conditional, ImmutableArray<Diagnostic> Errors) CompileConditional<TState>(string functionText)
+        public (BaseConditional Conditional, ImmutableArray<Diagnostic> Errors) CompileConditional<TState>(
+            string functionText)
         {
             var stateTypeName = typeof(TState).FullName?.Replace("+", ".");
             var namespaceName = typeof(TState).GetTypeInfo().Namespace;
 
             var scriptText = $@"using Yggdrasil.ScriptTypes;
-                                using {namespaceName};
 
                                 public class DerivedConditional : BaseConditional
                                 {{
                                     public override bool Execute(object baseState){{ var state = ({stateTypeName})baseState; return {functionText}; }} 
                                 }}";
 
-            foreach (var name in _config.ScriptUsings) { scriptText = scriptText.Insert(0, $"using {name};"); }
+            if (namespaceName != null) scriptText = scriptText.Insert(0, $"using {namespaceName};");
+            foreach (var name in _config.ScriptUsings) scriptText = scriptText.Insert(0, $"using {name};");
 
-            var references = new List<MetadataReference>
+            var defaultReferences = new[]
             {
-                MetadataReference.CreateFromFile(typeof(TState).GetTypeInfo().Assembly.Location),
-                MetadataReference.CreateFromFile(typeof(BaseConditional).GetTypeInfo().Assembly.Location)
+                typeof(TState).GetTypeInfo().Assembly.Location,
+                typeof(BaseConditional).GetTypeInfo().Assembly.Location
             };
+
+            var references = _config.ReferenceAssemblyPaths
+                .Union(defaultReferences)
+                .Distinct()
+                .Select(p => MetadataReference.CreateFromFile(p))
+                .ToList();
 
             var options = ScriptOptions.Default.AddReferences(references);
             var script = CSharpScript.Create<bool>(scriptText, options);
@@ -63,19 +103,20 @@ namespace Yggdrasil.Scripting
             using (var output = new MemoryStream())
             {
                 var emitResult = compilation.Emit(output);
-                if (!emitResult.Success) { return (null, emitResult.Diagnostics); }
+                if (!emitResult.Success) return (null, emitResult.Diagnostics);
 
                 compiledAssembly = output.ToArray();
             }
 
             var assembly = Assembly.Load(compiledAssembly);
             var entryType = assembly.GetTypes().First(t => t.Name == "DerivedConditional");
-            var instance = (BaseConditional)Activator.CreateInstance(entryType);
+            var instance = (BaseConditional) Activator.CreateInstance(entryType);
 
             return (instance, ImmutableArray<Diagnostic>.Empty);
         }
 
-        public (BaseDynamicConditional Conditional, ImmutableArray<Diagnostic> Errors) CompileDynamicConditional(string functionText)
+        public (BaseDynamicConditional Conditional, ImmutableArray<Diagnostic> Errors) CompileDynamicConditional(
+            string functionText)
         {
             var scriptText = $@"using Yggdrasil.ScriptTypes;
                                 using System.Dynamic;
@@ -84,14 +125,20 @@ namespace Yggdrasil.Scripting
                                     public override bool Execute(dynamic state){{ return {functionText}; }} 
                                 }}";
 
-            foreach (var name in _config.ScriptUsings) { scriptText = scriptText.Insert(0, $"using {name};"); }
+            foreach (var name in _config.ScriptUsings) scriptText = scriptText.Insert(0, $"using {name};");
 
-            var references = new List<MetadataReference>
+            var defaultReferences = new[]
             {
-                MetadataReference.CreateFromFile(typeof(Microsoft.CSharp.RuntimeBinder.RuntimeBinderException).GetTypeInfo().Assembly.Location),
-                MetadataReference.CreateFromFile(typeof(System.Runtime.CompilerServices.DynamicAttribute).GetTypeInfo().Assembly.Location),
-                MetadataReference.CreateFromFile(typeof(BaseConditional).GetTypeInfo().Assembly.Location)
+                typeof(RuntimeBinderException).GetTypeInfo().Assembly.Location,
+                typeof(DynamicAttribute).GetTypeInfo().Assembly.Location,
+                typeof(BaseConditional).GetTypeInfo().Assembly.Location
             };
+
+            var references = _config.ReferenceAssemblyPaths
+                .Union(defaultReferences)
+                .Distinct()
+                .Select(p => MetadataReference.CreateFromFile(p))
+                .ToList();
 
             var options = ScriptOptions.Default.AddReferences(references);
             var script = CSharpScript.Create<bool>(scriptText, options);
@@ -101,14 +148,14 @@ namespace Yggdrasil.Scripting
             using (var output = new MemoryStream())
             {
                 var emitResult = compilation.Emit(output);
-                if (!emitResult.Success) { return (null, emitResult.Diagnostics); }
+                if (!emitResult.Success) return (null, emitResult.Diagnostics);
 
                 compiledAssembly = output.ToArray();
             }
 
             var assembly = Assembly.Load(compiledAssembly);
             var entryType = assembly.GetTypes().First(t => t.Name == "DerivedDynamicConditional");
-            var instance = (BaseDynamicConditional)Activator.CreateInstance(entryType);
+            var instance = (BaseDynamicConditional) Activator.CreateInstance(entryType);
 
             return (instance, ImmutableArray<Diagnostic>.Empty);
         }
@@ -130,13 +177,13 @@ namespace Yggdrasil.Scripting
 
             foreach (var m in scriptMatches)
             {
-                var match = (Match)m;
+                var match = (Match) m;
                 var matchText = match.Value;
                 var innerText = match.Groups[1].Value;
                 var cleanText = matchText;
 
-                if (_innerOpening.IsMatch(cleanText)) { cleanText = _innerOpening.Replace(cleanText, ">"); }
-                if (_innerClosing.IsMatch(cleanText)) { cleanText = _innerClosing.Replace(cleanText, "<"); }
+                if (_innerOpening.IsMatch(cleanText)) cleanText = _innerOpening.Replace(cleanText, ">");
+                if (_innerClosing.IsMatch(cleanText)) cleanText = _innerClosing.Replace(cleanText, "<");
                 if (_attributeOpening.IsMatch(cleanText))
                 {
                     cleanText = _attributeOpening.Replace(cleanText, "=\"");

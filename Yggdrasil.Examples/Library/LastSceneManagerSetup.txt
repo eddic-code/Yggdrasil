@@ -1,5 +1,5 @@
 sceneSetups:
-- path: Assets/Example - Parsing/Main.unity
+- path: Assets/Example - Compilation/Main.unity
   isLoaded: 1
   isActive: 1
   isSubScene: 0
