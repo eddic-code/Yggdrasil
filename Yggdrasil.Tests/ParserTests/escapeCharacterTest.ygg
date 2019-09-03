@@ -21,6 +21,23 @@
         state.A >= state.B || state.C <= state.D
       '
     </NodeC>
+    <NodeD Conditional='     
+    state.A > state.B || state.C < state.D            '>
+      '
+        state.A >= state.B || state.C <= state.D'
+    </NodeD>
+    <NodeE>
+      '
+        var manager = new CoroutineManager();
+        var root = new Sequence(manager);
+        var stages = new Queue<string>();
+
+        manager.Root = root;
+        Assert.AreEqual(Result.Unknown, manager.Result);
+        Assert.AreEqual(0UL, manager.TickCount);
+        manager.Update(new State { A = true, B = true, C = true});
+      '
+    </NodeE>
   </NodeA>
 </FilterD>
 

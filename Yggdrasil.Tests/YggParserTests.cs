@@ -38,6 +38,20 @@ namespace Yggdrasil.Tests
 
             Assert.AreEqual(attributeTextB1, document.SelectSingleNode("/__Main/FilterD/NodeA/NodeC").Attributes[0].Value);
             Assert.AreEqual(attributeTextB0, document.SelectSingleNode("/__Main/FilterD/NodeA/NodeC").InnerText);
+
+            Assert.AreEqual(attributeTextB1, document.SelectSingleNode("/__Main/FilterD/NodeA/NodeD").Attributes[0].Value);
+            Assert.AreEqual(attributeTextB0, document.SelectSingleNode("/__Main/FilterD/NodeA/NodeD").InnerText);
+
+            const string innerTextE = @"var manager = new CoroutineManager();
+        var root = new Sequence(manager);
+        var stages = new Queue<string>();
+
+        manager.Root = root;
+        Assert.AreEqual(Result.Unknown, manager.Result);
+        Assert.AreEqual(0UL, manager.TickCount);
+        manager.Update(new State { A = true, B = true, C = true});";
+
+            Assert.AreEqual(innerTextE, document.SelectSingleNode("/__Main/FilterD/NodeA/NodeE").InnerText);
         }
 
         [TestMethod]
