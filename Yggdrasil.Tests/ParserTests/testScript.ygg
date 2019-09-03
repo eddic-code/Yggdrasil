@@ -1,0 +1,18 @@
+<Filter Guid="A" TypeDef="MyCustomTypeA" Conditional=`state.A <= state.B && state.C <= state.D`>
+  <Sequence Guid="B">
+    <Condition Guid="C">`state.B < state.C && state.A < state.B`</Condition>
+    <Condition Guid="D">`state.A < state.D`</Condition>
+    <Inverter Guid="E">
+      <Condition Guid="F">`state.A > state.D`</Condition>
+    </Inverter>
+  </Sequence>
+</Filter>
+
+<Sequence Guid="G" TypeDef="MyCustomTypeB">
+  <MyCustomTypeA Guid="H"/>
+  <MyCustomTypeA Guid="I"/>
+</Sequence>
+
+<Inverter Guid="J">
+  <MyCustomTypeB Guid="K"/>
+</Inverter>

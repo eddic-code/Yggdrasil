@@ -1,5 +1,9 @@
 ﻿using System.Dynamic;
+using System.Linq;
+using System.Reflection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Yggdrasil.Coroutines;
+using Yggdrasil.Nodes;
 using Yggdrasil.Scripting;
 
 namespace Yggdrasil.Tests
@@ -110,6 +114,121 @@ namespace Yggdrasil.Tests
 
             var (scriptC, _) = parser.CompileDynamicConditional(textC);
             Assert.IsTrue(scriptC.Execute(state));
+        }
+
+        [TestMethod]
+        [DeploymentItem("ParserTests\\testScript.ygg")]
+        public void ScriptBuildTest()
+        {
+            var config = new YggParserConfig();
+
+            config.NodeTypeAssemblies.Add(typeof(Node).Assembly.GetName().Name);
+
+            var manager = new CoroutineManager();
+            var parser = new YggParser(config);
+            var (nodes, context) = parser.BuildFromFile(manager, "ParserTests\\testScript.ygg");
+
+            Assert.IsTrue(context.Success);
+            Assert.AreEqual(0, context.Errors.Count);
+            Assert.AreEqual(3, nodes.Count);
+
+            // MyCustomTypeA
+            var nodeA = nodes[0];
+            Assert.AreEqual("A", nodeA.Guid);
+            Assert.AreEqual(typeof(Filter), nodeA.GetType());
+            Assert.AreEqual(1, nodeA.Children.Count);
+
+            var nodeB = nodeA.Children[0];
+            Assert.AreEqual("B", nodeB.Guid);
+            Assert.AreEqual(typeof(Sequence), nodeB.GetType());
+            Assert.AreEqual(3, nodeB.Children.Count);
+
+            var nodeC = nodeB.Children[0];
+            Assert.AreEqual("C", nodeC.Guid);
+            Assert.AreEqual(typeof(Condition), nodeC.GetType());
+            Assert.AreEqual(0, nodeC.Children.Count);
+
+            var nodeD = nodeB.Children[1];
+            Assert.AreEqual("D", nodeD.Guid);
+            Assert.AreEqual(typeof(Condition), nodeD.GetType());
+            Assert.AreEqual(0, nodeD.Children.Count);
+
+            var nodeE = nodeB.Children[2];
+            Assert.AreEqual("E", nodeE.Guid);
+            Assert.AreEqual(typeof(Inverter), nodeE.GetType());
+            Assert.AreEqual(1, nodeE.Children.Count);
+
+            var nodeF = nodeE.Children[0];
+            Assert.AreEqual("F", nodeF.Guid);
+            Assert.AreEqual(typeof(Condition), nodeF.GetType());
+            Assert.AreEqual(0, nodeF.Children.Count);
+
+            // MyCustomTypeB
+            var nodeG = nodes[1];
+            Assert.AreEqual("G", nodeG.Guid);
+            Assert.AreEqual(typeof(Sequence), nodeG.GetType());
+            Assert.AreEqual(2, nodeG.Children.Count);
+
+            var nodeH = nodeG.Children[0];
+            Assert.AreEqual("H", nodeH.Guid);
+            Assert.AreEqual(typeof(Filter), nodeH.GetType());
+            CheckMyCustomTypeA(nodeH);
+
+            var nodeI = nodeG.Children[1];
+            Assert.AreEqual("I", nodeI.Guid);
+            Assert.AreEqual(typeof(Filter), nodeI.GetType());
+            CheckMyCustomTypeA(nodeI);
+
+            // Third node.
+            var nodeJ = nodes[2];
+            Assert.AreEqual("J", nodeJ.Guid);
+            Assert.AreEqual(typeof(Inverter), nodeJ.GetType());
+            Assert.AreEqual(1, nodeJ.Children.Count);
+
+            var nodeK = nodeJ.Children[0];
+            Assert.AreEqual("K", nodeK.Guid);
+            Assert.AreEqual(typeof(Sequence), nodeK.GetType());
+            CheckMyCustomTypeB(nodeK);
+        }
+
+        private static void CheckMyCustomTypeA(Node node)
+        {
+            Assert.AreEqual(typeof(Filter), node.GetType());
+            Assert.AreEqual(1, node.Children.Count);
+
+            var nodeB = node.Children[0];
+            Assert.AreEqual(typeof(Sequence), nodeB.GetType());
+            Assert.AreEqual(3, nodeB.Children.Count);
+
+            var nodeC = nodeB.Children[0];
+            Assert.AreEqual(typeof(Condition), nodeC.GetType());
+            Assert.AreEqual(0, nodeC.Children.Count);
+
+            var nodeD = nodeB.Children[1];
+            Assert.AreEqual(typeof(Condition), nodeD.GetType());
+            Assert.AreEqual(0, nodeD.Children.Count);
+
+            var nodeE = nodeB.Children[2];
+            Assert.AreEqual(typeof(Inverter), nodeE.GetType());
+            Assert.AreEqual(1, nodeE.Children.Count);
+
+            var nodeF = nodeE.Children[0];
+            Assert.AreEqual(typeof(Condition), nodeF.GetType());
+            Assert.AreEqual(0, nodeF.Children.Count);
+        }
+
+        private static void CheckMyCustomTypeB(Node node)
+        {
+            Assert.AreEqual(typeof(Sequence), node.GetType());
+            Assert.AreEqual(2, node.Children.Count);
+
+            var nodeH = node.Children[0];
+            Assert.AreEqual(typeof(Filter), nodeH.GetType());
+            CheckMyCustomTypeA(nodeH);
+
+            var nodeI = node.Children[1];
+            Assert.AreEqual(typeof(Filter), nodeI.GetType());
+            CheckMyCustomTypeA(nodeI);
         }
 
         public class TestState

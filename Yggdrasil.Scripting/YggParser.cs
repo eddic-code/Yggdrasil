@@ -28,7 +28,6 @@
 #endregion
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
@@ -41,13 +40,16 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Scripting;
 using Microsoft.CodeAnalysis.Scripting;
 using Microsoft.CSharp.RuntimeBinder;
+using Yggdrasil.Coroutines;
+using Yggdrasil.Nodes;
 using Yggdrasil.ScriptTypes;
 
 namespace Yggdrasil.Scripting
 {
     public class YggParser
     {
-        private const string InstanceGuidAttribute = "typedef";
+        private const string GuidAttribute = "guid";
+        private const string TypeDefAttribute = "typedef";
 
         private static readonly Regex _scriptRegex = new Regex("[>=]*[\\s\n\r]*`[\\s\n\r]*(.*?)[\\s\n\r]*`[\\s\n\r]*<*",
             RegexOptions.Singleline | RegexOptions.Compiled);
@@ -63,10 +65,12 @@ namespace Yggdrasil.Scripting
         {
             _config = config ?? new YggParserConfig();
 
-            BaseNodeMap = _config.NodeTypes
-                .Select(n => n.ToLowerInvariant())
-                .Distinct()
-                .Select(Type.GetType)
+            BaseNodeMap = AppDomain.CurrentDomain.GetAssemblies()
+                .Where(a => _config.NodeTypeAssemblies.Contains(a.GetName().Name))
+                .SelectMany(a => a.GetTypes())
+                .Where(t => typeof(Node).IsAssignableFrom(t) && !t.IsAbstract && t != typeof(Node))
+                .GroupBy(t => t.Name)
+                .Select(g => g.First())
                 .ToDictionary(t => t.Name, t => t);
         }
 
@@ -168,23 +172,76 @@ namespace Yggdrasil.Scripting
         public XmlDocument LoadFromFile(string path)
         {
             var document = new XmlDocument();
-            var text = new string(ConvertToXml(path).ToArray());
+            var text = ConvertToXml(path);
 
             document.LoadXml(text);
 
             return document;
         }
 
-        private void Instantiate(List<ParserNode> nodes, Dictionary<string, ParserNode> typeDefMap)
+        public (List<Node> Nodes, BuildContext Context) BuildFromFile(CoroutineManager manager, string file)
         {
-            
+            var files = new List<string> {file};
+            return BuildFromFiles(manager, files);
         }
 
-        private ParserNode Expand(XmlDocument document, ulong idCounter, Dictionary<string, ParserNode> typeDefMap)
+        public (List<Node> Nodes, BuildContext Context) BuildFromFiles(CoroutineManager manager, List<string> files)
+        {
+            var context = new BuildContext();
+            var output = new List<Node>();
+            var parserNodes = new List<ParserNode>();
+            var guids = new Dictionary<string, ParserNode>();
+            var typeDefMap = new Dictionary<string, ParserNode>();
+
+            // Extract all parser nodes from files.
+            foreach (var file in files)
+            {
+                // Check file exists.
+                if (!File.Exists(file))
+                {
+                    context.Errors.Add(new BuildError {Message = "File does not exit.", Target = file});
+                    continue;
+                }
+
+                // Try load file into xml.
+                XmlDocument xmlDocument;
+                try { xmlDocument = LoadFromFile(file); }
+                catch (Exception e)
+                {
+                    context.Errors.Add(new BuildError {Message = $"Could not load file. {e.Message}", Target = file});
+                    continue;
+                }
+
+                // Extract nodes from document.
+                var fileNodes = Expand(file, xmlDocument, typeDefMap, context.Errors, guids);
+                parserNodes.AddRange(fileNodes);
+            }
+
+            // Instantiate nodes.
+            foreach (var parserNode in parserNodes.Where(p => p.IsTopmost))
+            {
+                // Early exit if there are critical errors.
+                if (context.Errors.Count(e => e.IsCritical) > 0)
+                {
+                    context.Success = false;
+                    return (output, context);
+                }
+
+                var node = parserNode.CreateInstance(manager, typeDefMap, context.Errors);
+                if (node != null) { output.Add(node); }
+            }
+
+            context.Success = context.Errors.Count == 0;
+            return (output, context);
+        }
+
+        private List<ParserNode> Expand(string file, XmlDocument document, Dictionary<string, ParserNode> typeDefMap, 
+            List<BuildError> errors, Dictionary<string, ParserNode> guids)
         {
             var rootXml = document.SelectSingleNode("/__Main");
-            var root = new ParserNode {Id = ++idCounter, Xml = rootXml, Name = "__main"};
+            var root = new ParserNode {Xml = rootXml, Tag = "__Main", File = file};
             var open = new Stack<ParserNode>();
+            var nodes = new List<ParserNode>();
 
             open.Push(root);
 
@@ -197,8 +254,21 @@ namespace Yggdrasil.Scripting
 
                 foreach (var xmlChild in GetChildren(next.Xml))
                 {
-                    var tag = xmlChild.Name.ToLowerInvariant();
-                    var n = new ParserNode {Id = ++idCounter, Xml = xmlChild, Name = tag};
+                    if (xmlChild.NodeType != XmlNodeType.Element) { continue; }
+                    var tag = xmlChild.Name;
+
+                    // Determine its guid. Check repetitions.
+                    var guid = GetAttributeToLower(xmlChild, GuidAttribute)?.Value;
+                    if (string.IsNullOrWhiteSpace(guid)) { guid = GetRandomGuid(guids); }
+                    else if (guids.TryGetValue(guid, out var prev))
+                    {
+                        errors.Add(new BuildError {IsCritical = true, Message = $"Repeated node GUID: {guid}", Target = prev.File, SecondTarget = file});
+                        continue;
+                    }
+
+                    var n = new ParserNode {Xml = xmlChild, Tag = tag, File = file, Guid = guid};
+                    n.IsTopmost = next == root;
+                    guids[guid] = n;
 
                     // Try resolve the node type.
                     if (BaseNodeMap.TryGetValue(tag, out var type))
@@ -207,20 +277,27 @@ namespace Yggdrasil.Scripting
                     }
 
                     // Search for a type definition attribute on the node.
-                    foreach (var att in GetAttributes(n.Xml))
+                    n.TypeDef = GetAttributeToLower(xmlChild, TypeDefAttribute)?.Value;
+                    if (!string.IsNullOrWhiteSpace(n.TypeDef))
                     {
-                        if (att.Name.ToLowerInvariant() != InstanceGuidAttribute) { continue; }
-
-                        n.TypeDef = att.Value.ToLowerInvariant();
-                        typeDefMap[n.TypeDef] = n;
+                        // Check TypeDef repetitions.
+                        if (typeDefMap.TryGetValue(n.TypeDef, out var prev))
+                        {
+                            errors.Add(new BuildError {IsCritical = true, Message = $"Repeated TypeDef identifier: {n.TypeDef}", Target = prev.File, SecondTarget = n.File});
+                        }
+                        else
+                        {
+                            typeDefMap[n.TypeDef] = n;
+                        }
                     }
 
                     next.Children.Add(n);
+                    nodes.Add(n);
                     open.Push(n);
                 }
             }
 
-            return root;
+            return nodes;
         }
 
         private static string ConvertToXml(string path)
@@ -255,6 +332,18 @@ namespace Yggdrasil.Scripting
             text = text.Insert(0, "<__Main>");
 
             return text.Insert(text.Length, "</__Main>");
+        }
+
+        private static string GetRandomGuid(Dictionary<string, ParserNode> guids)
+        {
+            var guid = Guid.NewGuid().ToString().Replace("-", "");
+            while (guids.ContainsKey(guid)) { guid = Guid.NewGuid().ToString().Replace("-", ""); }
+            return guid;
+        }
+
+        private static XmlAttribute GetAttributeToLower(XmlNode node, string attributeName)
+        {
+            return GetAttributes(node).FirstOrDefault(a => a.Name.ToLowerInvariant() == attributeName);
         }
 
         private static IEnumerable<XmlAttribute> GetAttributes(XmlNode xml)

@@ -27,16 +27,17 @@
 
 #endregion
 
+using System;
 using System.Collections.Generic;
 
 namespace Yggdrasil.Scripting
 {
     public class YggParserConfig
     {
-        public List<string> ReferenceAssemblyPaths { get; set; } = new List<string>();
+        public HashSet<string> ReferenceAssemblyPaths { get; set; } = new HashSet<string>();
 
-        public List<string> NodeTypes { get; set; } = new List<string>();
+        public HashSet<string> NodeTypeAssemblies { get; set; } = new HashSet<string>();
 
-        public List<string> ScriptUsings { get; set; } = new List<string>();
+        public HashSet<string> ScriptUsings { get; set; } = new HashSet<string>();
     }
 }
