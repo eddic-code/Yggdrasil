@@ -34,17 +34,17 @@ using Yggdrasil.Enums;
 
 namespace Yggdrasil.Nodes
 {
-    public class ParallelFilter : Node
+    public class Interrupt : Node
     {
         private readonly List<CoroutineThread> _threads = new List<CoroutineThread>(10);
         private List<Node> _children;
 
-        public ParallelFilter(CoroutineManager manager, Func<object, bool> conditional) : base(manager)
+        public Interrupt(CoroutineManager manager, Func<object, bool> conditional) : base(manager)
         {
             Conditional = conditional;
         }
 
-        public ParallelFilter(CoroutineManager manager) : base(manager) { }
+        public Interrupt(CoroutineManager manager) : base(manager) { }
 
         public List<Node> Children
         {

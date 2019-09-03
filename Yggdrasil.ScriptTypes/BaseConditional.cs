@@ -1,4 +1,4 @@
-﻿namespace Yggdrasil.Scripting
+﻿namespace Yggdrasil.ScriptTypes
 {
     public abstract class BaseConditional
     {

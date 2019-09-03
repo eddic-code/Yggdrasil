@@ -422,7 +422,7 @@ namespace Yggdrasil.Tests
         public void ParallelFilterNodeTest()
         {
             var manager = new CoroutineManager();
-            var root = new ParallelFilter(manager, s => ((State)s).C);
+            var root = new Interrupt(manager, s => ((State)s).C);
             var stages = new Queue<string>();
 
             var conditionalA = new TestYieldConditionNode(manager) {PrintA="AYield", PrintB="A", Stages = stages, Conditional = s => s.A};

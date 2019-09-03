@@ -73,13 +73,13 @@ namespace Yggdrasil.Tests
             state.SecondName = "edelgard";
             state.ThirdName = "dimitri";
 
-            var scriptA = parser.CompileConditional<TestState>(textA);
+            var (scriptA, _) = parser.CompileConditional<TestState>(textA);
             Assert.IsTrue(scriptA.Execute(state));
 
-            var scriptB = parser.CompileConditional<TestState>(textB);
+            var (scriptB, _) = parser.CompileConditional<TestState>(textB);
             Assert.IsFalse(scriptB.Execute(state));
 
-            var scriptC = parser.CompileConditional<TestState>(textC);
+            var (scriptC, _) = parser.CompileConditional<TestState>(textC);
             Assert.IsTrue(scriptC.Execute(state));
         }
 
@@ -102,13 +102,13 @@ namespace Yggdrasil.Tests
             state.SecondName = "edelgard";
             state.ThirdName = "dimitri";
 
-            var scriptA = parser.CompileDynamicConditional(textA);
+            var (scriptA, _) = parser.CompileDynamicConditional(textA);
             Assert.IsTrue(scriptA.Execute(state));
 
-            var scriptB = parser.CompileDynamicConditional(textB);
+            var (scriptB, _) = parser.CompileDynamicConditional(textB);
             Assert.IsFalse(scriptB.Execute(state));
 
-            var scriptC = parser.CompileDynamicConditional(textC);
+            var (scriptC, _) = parser.CompileDynamicConditional(textC);
             Assert.IsTrue(scriptC.Execute(state));
         }
 

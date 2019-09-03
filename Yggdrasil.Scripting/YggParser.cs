@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -8,6 +9,7 @@ using System.Xml;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Scripting;
 using Microsoft.CodeAnalysis.Scripting;
+using Yggdrasil.ScriptTypes;
 
 namespace Yggdrasil.Scripting
 {
@@ -19,24 +21,38 @@ namespace Yggdrasil.Scripting
         private static readonly Regex _attributeOpening = new Regex("=[\\s\n\r]*'[\\s\n\r]*", RegexOptions.Compiled);
         private static readonly Regex _attributeClosing = new Regex("[\\s\n\r]*'", RegexOptions.Compiled);
 
-        public List<Type> NodeTypes { get; set; } = new List<Type>();
+        private readonly YggParserConfig _config;
 
-        public BaseConditional CompileConditional<T>(string functionText)
+        public YggParser(YggParserConfig config = null)
         {
-            var stateTypeName = typeof(T).FullName?.Replace("+", ".");
-            var namespaceName = typeof(T).GetTypeInfo().Namespace;
+            _config = config ?? new YggParserConfig();
 
-            var scriptText = $@"using Yggdrasil.Scripting; 
+            NodeTypes = _config.NodeTypes
+                .Select(Type.GetType)
+                .ToList();
+        }
+
+        public List<Type> NodeTypes { get; }
+
+        public (BaseConditional Conditional, ImmutableArray<Diagnostic> Errors) CompileConditional<TState>(string functionText)
+        {
+            var stateTypeName = typeof(TState).FullName?.Replace("+", ".");
+            var namespaceName = typeof(TState).GetTypeInfo().Namespace;
+
+            var scriptText = $@"using Yggdrasil.ScriptTypes;
                                 using {namespaceName};
+
                                 public class DerivedConditional : BaseConditional
                                 {{
                                     public override bool Execute(object baseState){{ var state = ({stateTypeName})baseState; return {functionText}; }} 
                                 }}";
 
+            foreach (var name in _config.ScriptUsings) { scriptText = scriptText.Insert(0, $"using {name};"); }
+
             var references = new List<MetadataReference>
             {
-                MetadataReference.CreateFromFile(typeof(T).GetTypeInfo().Assembly.Location),
-                MetadataReference.CreateFromFile(GetType().GetTypeInfo().Assembly.Location)
+                MetadataReference.CreateFromFile(typeof(TState).GetTypeInfo().Assembly.Location),
+                MetadataReference.CreateFromFile(typeof(BaseConditional).GetTypeInfo().Assembly.Location)
             };
 
             var options = ScriptOptions.Default.AddReferences(references);
@@ -47,11 +63,7 @@ namespace Yggdrasil.Scripting
             using (var output = new MemoryStream())
             {
                 var emitResult = compilation.Emit(output);
-
-                if (!emitResult.Success)
-                {
-                    throw new Exception("Compilation failed.");
-                }
+                if (!emitResult.Success) { return (null, emitResult.Diagnostics); }
 
                 compiledAssembly = output.ToArray();
             }
@@ -60,23 +72,25 @@ namespace Yggdrasil.Scripting
             var entryType = assembly.GetTypes().First(t => t.Name == "DerivedConditional");
             var instance = (BaseConditional)Activator.CreateInstance(entryType);
 
-            return instance;
+            return (instance, ImmutableArray<Diagnostic>.Empty);
         }
 
-        public BaseDynamicConditional CompileDynamicConditional(string functionText)
+        public (BaseDynamicConditional Conditional, ImmutableArray<Diagnostic> Errors) CompileDynamicConditional(string functionText)
         {
-            var scriptText = $@"using Yggdrasil.Scripting; 
+            var scriptText = $@"using Yggdrasil.ScriptTypes;
                                 using System.Dynamic;
                                 public class DerivedDynamicConditional : BaseDynamicConditional
                                 {{
                                     public override bool Execute(dynamic state){{ return {functionText}; }} 
                                 }}";
 
+            foreach (var name in _config.ScriptUsings) { scriptText = scriptText.Insert(0, $"using {name};"); }
+
             var references = new List<MetadataReference>
             {
                 MetadataReference.CreateFromFile(typeof(Microsoft.CSharp.RuntimeBinder.RuntimeBinderException).GetTypeInfo().Assembly.Location),
                 MetadataReference.CreateFromFile(typeof(System.Runtime.CompilerServices.DynamicAttribute).GetTypeInfo().Assembly.Location),
-                MetadataReference.CreateFromFile(GetType().GetTypeInfo().Assembly.Location)
+                MetadataReference.CreateFromFile(typeof(BaseConditional).GetTypeInfo().Assembly.Location)
             };
 
             var options = ScriptOptions.Default.AddReferences(references);
@@ -87,11 +101,7 @@ namespace Yggdrasil.Scripting
             using (var output = new MemoryStream())
             {
                 var emitResult = compilation.Emit(output);
-
-                if (!emitResult.Success)
-                {
-                    throw new Exception("Compilation failed.");
-                }
+                if (!emitResult.Success) { return (null, emitResult.Diagnostics); }
 
                 compiledAssembly = output.ToArray();
             }
@@ -100,7 +110,7 @@ namespace Yggdrasil.Scripting
             var entryType = assembly.GetTypes().First(t => t.Name == "DerivedDynamicConditional");
             var instance = (BaseDynamicConditional)Activator.CreateInstance(entryType);
 
-            return instance;
+            return (instance, ImmutableArray<Diagnostic>.Empty);
         }
 
         public XmlDocument LoadFromFile(string path)
