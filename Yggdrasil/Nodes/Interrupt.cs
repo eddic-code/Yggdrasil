@@ -46,7 +46,7 @@ namespace Yggdrasil.Nodes
 
         public Interrupt(CoroutineManager manager) : base(manager) { }
 
-        public List<Node> Children
+        public override List<Node> Children
         {
             get => _children;
             set

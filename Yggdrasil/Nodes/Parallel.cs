@@ -40,7 +40,7 @@ namespace Yggdrasil.Nodes
 
         public Parallel(CoroutineManager manager) : base(manager) { }
 
-        public List<Node> Children
+        public override List<Node> Children
         {
             get => _children;
             set

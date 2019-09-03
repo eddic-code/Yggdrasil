@@ -27,6 +27,7 @@
 
 #endregion
 
+using System.Collections.Generic;
 using Yggdrasil.Coroutines;
 using Yggdrasil.Enums;
 
@@ -45,6 +46,8 @@ namespace Yggdrasil.Nodes
         protected Coroutine<Result> Success => Coroutine<Result>.CreateWith(Result.Success);
         protected Coroutine<Result> Failure => Coroutine<Result>.CreateWith(Result.Failure);
         protected object State => Manager.State;
+
+        public virtual List<Node> Children { get; set; } = new List<Node>();
 
         public string Guid { get; set; }
 

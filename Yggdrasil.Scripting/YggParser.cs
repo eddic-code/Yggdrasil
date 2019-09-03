@@ -28,6 +28,7 @@
 #endregion
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
@@ -46,6 +47,8 @@ namespace Yggdrasil.Scripting
 {
     public class YggParser
     {
+        private const string InstanceGuidAttribute = "typedef";
+
         private static readonly Regex _scriptRegex = new Regex("[>=]*[\\s\n\r]*`[\\s\n\r]*(.*?)[\\s\n\r]*`[\\s\n\r]*<*",
             RegexOptions.Singleline | RegexOptions.Compiled);
 
@@ -60,12 +63,14 @@ namespace Yggdrasil.Scripting
         {
             _config = config ?? new YggParserConfig();
 
-            NodeTypes = _config.NodeTypes
+            BaseNodeMap = _config.NodeTypes
+                .Select(n => n.ToLowerInvariant())
+                .Distinct()
                 .Select(Type.GetType)
-                .ToList();
+                .ToDictionary(t => t.Name, t => t);
         }
 
-        public List<Type> NodeTypes { get; }
+        public Dictionary<string, Type> BaseNodeMap { get; }
 
         public (BaseConditional Conditional, ImmutableArray<Diagnostic> Errors) CompileConditional<TState>(
             string functionText)
@@ -170,6 +175,54 @@ namespace Yggdrasil.Scripting
             return document;
         }
 
+        private void Instantiate(List<ParserNode> nodes, Dictionary<string, ParserNode> typeDefMap)
+        {
+            
+        }
+
+        private ParserNode Expand(XmlDocument document, ulong idCounter, Dictionary<string, ParserNode> typeDefMap)
+        {
+            var rootXml = document.SelectSingleNode("/__Main");
+            var root = new ParserNode {Id = ++idCounter, Xml = rootXml, Name = "__main"};
+            var open = new Stack<ParserNode>();
+
+            open.Push(root);
+
+            while (open.Count > 0)
+            {
+                var next = open.Pop();
+                if (!next.Xml.HasChildNodes) { continue; }
+
+                next.Children = new List<ParserNode>();
+
+                foreach (var xmlChild in GetChildren(next.Xml))
+                {
+                    var tag = xmlChild.Name.ToLowerInvariant();
+                    var n = new ParserNode {Id = ++idCounter, Xml = xmlChild, Name = tag};
+
+                    // Try resolve the node type.
+                    if (BaseNodeMap.TryGetValue(tag, out var type))
+                    {
+                        n.Type = type;
+                    }
+
+                    // Search for a type definition attribute on the node.
+                    foreach (var att in GetAttributes(n.Xml))
+                    {
+                        if (att.Name.ToLowerInvariant() != InstanceGuidAttribute) { continue; }
+
+                        n.TypeDef = att.Value.ToLowerInvariant();
+                        typeDefMap[n.TypeDef] = n;
+                    }
+
+                    next.Children.Add(n);
+                    open.Push(n);
+                }
+            }
+
+            return root;
+        }
+
         private static string ConvertToXml(string path)
         {
             var text = File.ReadAllText(path);
@@ -202,6 +255,24 @@ namespace Yggdrasil.Scripting
             text = text.Insert(0, "<__Main>");
 
             return text.Insert(text.Length, "</__Main>");
+        }
+
+        private static IEnumerable<XmlAttribute> GetAttributes(XmlNode xml)
+        {
+            if (xml.Attributes == null) { yield break; }
+
+            foreach (var a in xml.Attributes)
+            {
+                yield return (XmlAttribute)a;
+            }
+        }
+
+        private static IEnumerable<XmlNode> GetChildren(XmlNode xml)
+        {
+            foreach (var a in xml.ChildNodes)
+            {
+                yield return (XmlNode)a;
+            }
         }
     }
 }

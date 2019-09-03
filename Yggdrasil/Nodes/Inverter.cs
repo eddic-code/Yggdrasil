@@ -36,7 +36,15 @@ namespace Yggdrasil.Nodes
     {
         public Inverter(CoroutineManager manager) : base(manager) { }
 
-        public Node Child { get; set; }
+        public Node Child
+        {
+            get
+            {
+                if (Children == null || Children.Count <= 0) { return null; }
+
+                return Children[0];
+            }
+        }
 
         protected override async Coroutine<Result> Tick()
         {

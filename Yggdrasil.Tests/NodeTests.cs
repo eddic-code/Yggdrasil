@@ -221,7 +221,7 @@ namespace Yggdrasil.Tests
             var stages = new Queue<string>();
 
             manager.Root = root;
-            root.Child = new TestYieldConditionNode(manager) {PrintA="Yield", PrintB="A", Stages = stages, Conditional = s => s.A};
+            root.Children.Add(new TestYieldConditionNode(manager) {PrintA="Yield", PrintB="A", Stages = stages, Conditional = s => s.A});
 
             Assert.AreEqual(0UL, manager.TickCount);
 
@@ -272,7 +272,7 @@ namespace Yggdrasil.Tests
             var stages = new Queue<string>();
 
             root.Conditional = s => ((State) s).A;
-            root.Child = new TestYieldConditionNode(manager) {PrintA="Yield", PrintB="B", Stages = stages, Conditional = s => s.B};
+            root.Children.Add(new TestYieldConditionNode(manager) {PrintA="Yield", PrintB="B", Stages = stages, Conditional = s => s.B});
             manager.Root = root;
 
             Assert.AreEqual(0UL, manager.TickCount);
