@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Dynamic;
 using System.Xml.Serialization;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -60,36 +61,7 @@ namespace Yggdrasil.Tests
         }
 
         [TestMethod]
-        public void ConditionalCompilationTest()
-        {
-            const string textA = @"state.A >= state.B || state.C <= state.D";
-            const string textB = @"state.A >= state.B || state.C >= state.D";
-            const string textC = @"state.FirstName != state.SecondName && state.FirstName == state.ThirdName";
-
-            var parser = new YggParser();
-            var state = new TestState();
-
-            state.A = 1;
-            state.B = 2;
-            state.C = 3;
-            state.D = 4;
-            state.E = 5;
-            state.FirstName = "dimitri";
-            state.SecondName = "edelgard";
-            state.ThirdName = "dimitri";
-
-            var (scriptA, _) = parser.CompileConditional<TestState>(textA);
-            Assert.IsTrue(scriptA.Execute(state));
-
-            var (scriptB, _) = parser.CompileConditional<TestState>(textB);
-            Assert.IsFalse(scriptB.Execute(state));
-
-            var (scriptC, _) = parser.CompileConditional<TestState>(textC);
-            Assert.IsTrue(scriptC.Execute(state));
-        }
-
-        [TestMethod]
-        public void DynamicConditionalCompilationTest()
+        public void DynamicFunctionCompilationTest()
         {
             const string textA = @"state.A >= state.B || state.C <= state.D";
             const string textB = @"state.A >= state.B || state.C >= state.D";
@@ -107,14 +79,63 @@ namespace Yggdrasil.Tests
             state.SecondName = "edelgard";
             state.ThirdName = "dimitri";
 
-            var (scriptA, _) = parser.CompileDynamicConditional(textA);
-            Assert.IsTrue(scriptA.Execute(state));
+            var conditionA = new TestDynamicConditionDouble();
+            var conditionB = new TestDynamicConditionDouble();
+            var conditionC = new TestDynamicConditionDouble();
 
-            var (scriptB, _) = parser.CompileDynamicConditional(textB);
-            Assert.IsFalse(scriptB.Execute(state));
+            var errors = parser.CompileDynamicFunction(conditionA, "Conditional", textA);
+            Assert.AreEqual(0, errors.Length);
+            Assert.IsNotNull(conditionA.Conditional);
+            Assert.IsTrue(conditionA.Conditional(state));
 
-            var (scriptC, _) = parser.CompileDynamicConditional(textC);
-            Assert.IsTrue(scriptC.Execute(state));
+            errors = parser.CompileDynamicFunction(conditionB, "Conditional", textB);
+            Assert.AreEqual(0, errors.Length);
+            Assert.IsNotNull(conditionB.Conditional);
+            Assert.IsFalse(conditionB.Conditional(state));
+
+            errors = parser.CompileDynamicFunction(conditionC, "Conditional", textC);
+            Assert.AreEqual(0, errors.Length);
+            Assert.IsNotNull(conditionC.Conditional);
+            Assert.IsTrue(conditionC.Conditional(state));
+        }
+
+        [TestMethod]
+        public void FunctionCompilationTest()
+        {
+            const string textA = @"state.A >= state.B || state.C <= state.D";
+            const string textB = @"state.A >= state.B || state.C >= state.D";
+            const string textC = @"state.FirstName != state.SecondName && state.FirstName == state.ThirdName";
+
+            var parser = new YggParser();
+            var state = new TestState();
+
+            state.A = 1;
+            state.B = 2;
+            state.C = 3;
+            state.D = 4;
+            state.E = 5;
+            state.FirstName = "dimitri";
+            state.SecondName = "edelgard";
+            state.ThirdName = "dimitri";
+
+            var conditionA = new Condition();
+            var conditionB = new Condition();
+            var conditionC = new Condition();
+
+            var errors = parser.CompileFunction<TestState>(conditionA, "Conditional", textA);
+            Assert.AreEqual(0, errors.Length);
+            Assert.IsNotNull(conditionA.Conditional);
+            Assert.IsTrue(conditionA.Conditional(state));
+
+            errors = parser.CompileFunction<TestState>(conditionB, "Conditional", textB);
+            Assert.AreEqual(0, errors.Length);
+            Assert.IsNotNull(conditionB.Conditional);
+            Assert.IsFalse(conditionB.Conditional(state));
+
+            errors = parser.CompileFunction<TestState>(conditionC, "Conditional", textC);
+            Assert.AreEqual(0, errors.Length);
+            Assert.IsNotNull(conditionC.Conditional);
+            Assert.IsTrue(conditionC.Conditional(state));
         }
 
         [TestMethod]
@@ -292,6 +313,26 @@ namespace Yggdrasil.Tests
         {
             [XmlAttribute]
             public string PropertyA { get; set; }
+        }
+
+        public class TestDynamicConditionDouble : Node
+        {
+            public Func<dynamic, bool> Conditional { get; set; }
+
+            protected override Coroutine<Result> Tick()
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        public class TestDynamicConditionSingle: Node
+        {
+            public Func<dynamic> Conditional { get; set; }
+
+            protected override Coroutine<Result> Tick()
+            {
+                throw new NotImplementedException();
+            }
         }
     }
 }

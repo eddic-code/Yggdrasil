@@ -11,8 +11,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Yggdrasil.Benchmarks", "Ygg
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Yggdrasil.Scripting", "Yggdrasil.Scripting\Yggdrasil.Scripting.csproj", "{12331CDD-6313-4D16-A5AC-1A1E64D32A66}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Yggdrasil.ScriptTypes", "Yggdrasil.ScriptTypes\Yggdrasil.ScriptTypes.csproj", "{555C9858-ADCF-48A9-80D2-10768D0713EA}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -35,10 +33,6 @@ Global
 		{12331CDD-6313-4D16-A5AC-1A1E64D32A66}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{12331CDD-6313-4D16-A5AC-1A1E64D32A66}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{12331CDD-6313-4D16-A5AC-1A1E64D32A66}.Release|Any CPU.Build.0 = Release|Any CPU
-		{555C9858-ADCF-48A9-80D2-10768D0713EA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{555C9858-ADCF-48A9-80D2-10768D0713EA}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{555C9858-ADCF-48A9-80D2-10768D0713EA}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{555C9858-ADCF-48A9-80D2-10768D0713EA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

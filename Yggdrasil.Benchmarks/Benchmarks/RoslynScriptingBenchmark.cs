@@ -8,6 +8,8 @@ using BenchmarkDotNet.Attributes;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Scripting;
 using Microsoft.CodeAnalysis.Scripting;
+using Yggdrasil.Nodes;
+using Yggdrasil.Scripting;
 
 namespace Yggdrasil.Benchmarks
 {
@@ -35,6 +37,8 @@ namespace Yggdrasil.Benchmarks
 
         private Delegate _dynamicCompiledConditional;
         private Delegate _genericCompiledConditional;
+
+        private Condition _reflectedCondition;
 
         [GlobalSetup]
         public void Setup()
@@ -71,6 +75,10 @@ namespace Yggdrasil.Benchmarks
             _derivedDynamicConditional = derivedDynamicConditional;
             _derivedDynamicFunction = s => derivedDynamicConditional.Execute(s);
 
+            _reflectedCondition = new Condition();
+            var parser = new YggParser();
+            parser.CompileFunction<TestGenericState>(_reflectedCondition, "Conditional", script);
+
             // Warmup.
             _dynamicBaseline(_dynamicState);
             _dynamicStaticMethod(_dynamicState);
@@ -83,6 +91,7 @@ namespace Yggdrasil.Benchmarks
             _derivedDynamicConditional.Execute(_dynamicState);
             _derivedFunction(_testGenericState);
             _derivedDynamicFunction(_dynamicState);
+            _reflectedCondition.Conditional(_testGenericState);
         }
 
         private static bool DynamicConditional(dynamic state)
@@ -171,6 +180,12 @@ namespace Yggdrasil.Benchmarks
         public void BDerivedDynamicFunction()
         {
             _derivedDynamicFunction(_dynamicState);
+        }
+
+        [Benchmark]
+        public void BReflectedParsedCondition()
+        {
+            _reflectedCondition.Conditional(_testGenericState);
         }
 
         private static Func<dynamic, bool> WrappedDynamicStateConditional(string text)

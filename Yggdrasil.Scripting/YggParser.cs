@@ -42,7 +42,6 @@ using Microsoft.CodeAnalysis.Scripting;
 using Microsoft.CSharp.RuntimeBinder;
 using Yggdrasil.Coroutines;
 using Yggdrasil.Nodes;
-using Yggdrasil.ScriptTypes;
 
 namespace Yggdrasil.Scripting
 {
@@ -75,99 +74,6 @@ namespace Yggdrasil.Scripting
         }
 
         public Dictionary<string, Type> BaseNodeMap { get; }
-
-        public (BaseConditional Conditional, ImmutableArray<Diagnostic> Errors) CompileConditional<TState>(
-            string functionText)
-        {
-            var stateTypeName = typeof(TState).FullName?.Replace("+", ".");
-            var namespaceName = typeof(TState).GetTypeInfo().Namespace;
-
-            var scriptText = $@"using Yggdrasil.ScriptTypes;
-
-                                public class DerivedConditional : BaseConditional
-                                {{
-                                    public override bool Execute(object baseState){{ var state = ({stateTypeName})baseState; return {functionText}; }} 
-                                }}";
-
-            if (namespaceName != null) scriptText = scriptText.Insert(0, $"using {namespaceName};");
-            foreach (var name in _config.ScriptUsings) scriptText = scriptText.Insert(0, $"using {name};");
-
-            var defaultReferences = new[]
-            {
-                typeof(TState).GetTypeInfo().Assembly.Location,
-                typeof(BaseConditional).GetTypeInfo().Assembly.Location
-            };
-
-            var references = _config.ReferenceAssemblyPaths
-                .Union(defaultReferences)
-                .Distinct()
-                .Select(p => MetadataReference.CreateFromFile(p))
-                .ToList();
-
-            var options = ScriptOptions.Default.AddReferences(references);
-            var script = CSharpScript.Create<bool>(scriptText, options);
-            var compilation = script.GetCompilation();
-
-            byte[] compiledAssembly;
-            using (var output = new MemoryStream())
-            {
-                var emitResult = compilation.Emit(output);
-                if (!emitResult.Success) return (null, emitResult.Diagnostics);
-
-                compiledAssembly = output.ToArray();
-            }
-
-            var assembly = Assembly.Load(compiledAssembly);
-            var entryType = assembly.GetTypes().First(t => t.Name == "DerivedConditional");
-            var instance = (BaseConditional) Activator.CreateInstance(entryType);
-
-            return (instance, ImmutableArray<Diagnostic>.Empty);
-        }
-
-        public (BaseDynamicConditional Conditional, ImmutableArray<Diagnostic> Errors) CompileDynamicConditional(
-            string functionText)
-        {
-            var scriptText = $@"using Yggdrasil.ScriptTypes;
-                                using System.Dynamic;
-                                public class DerivedDynamicConditional : BaseDynamicConditional
-                                {{
-                                    public override bool Execute(dynamic state){{ return {functionText}; }} 
-                                }}";
-
-            foreach (var name in _config.ScriptUsings) scriptText = scriptText.Insert(0, $"using {name};");
-
-            var defaultReferences = new[]
-            {
-                typeof(RuntimeBinderException).GetTypeInfo().Assembly.Location,
-                typeof(DynamicAttribute).GetTypeInfo().Assembly.Location,
-                typeof(BaseConditional).GetTypeInfo().Assembly.Location
-            };
-
-            var references = _config.ReferenceAssemblyPaths
-                .Union(defaultReferences)
-                .Distinct()
-                .Select(p => MetadataReference.CreateFromFile(p))
-                .ToList();
-
-            var options = ScriptOptions.Default.AddReferences(references);
-            var script = CSharpScript.Create<bool>(scriptText, options);
-            var compilation = script.GetCompilation();
-
-            byte[] compiledAssembly;
-            using (var output = new MemoryStream())
-            {
-                var emitResult = compilation.Emit(output);
-                if (!emitResult.Success) return (null, emitResult.Diagnostics);
-
-                compiledAssembly = output.ToArray();
-            }
-
-            var assembly = Assembly.Load(compiledAssembly);
-            var entryType = assembly.GetTypes().First(t => t.Name == "DerivedDynamicConditional");
-            var instance = (BaseDynamicConditional) Activator.CreateInstance(entryType);
-
-            return (instance, ImmutableArray<Diagnostic>.Empty);
-        }
 
         public XmlDocument LoadFromFile(string path)
         {
@@ -253,6 +159,41 @@ namespace Yggdrasil.Scripting
 
             context.Success = context.Errors.Count == 0;
             return (output, context);
+        }
+
+        public ImmutableArray<Diagnostic> CompileFunction<TState>(object obj, string propertyName, string functionText)
+        {
+            var property = obj.GetType().GetProperty(propertyName);
+            if (property == null) { return ImmutableArray<Diagnostic>.Empty; }
+
+            var functionType = property.PropertyType;
+
+            if (functionType.IsGenericType)
+            {
+                if (functionType.GetGenericTypeDefinition() == typeof(Func<>)) { return CompileFuncSingleGeneric<TState>(obj, property, functionText); }
+                if (functionType.GetGenericTypeDefinition() == typeof(Func<,>)) { return CompileFuncDoubleGeneric<TState>(obj, property, functionText); }
+                return ImmutableArray<Diagnostic>.Empty;
+            }
+            
+            if (functionType == typeof(Action)) { return CompileAction(obj, property, functionText); }
+            return ImmutableArray<Diagnostic>.Empty;
+        }
+
+        public ImmutableArray<Diagnostic> CompileDynamicFunction(object obj, string propertyName, string functionText)
+        {
+            var property = obj.GetType().GetProperty(propertyName);
+            if (property == null) { return ImmutableArray<Diagnostic>.Empty; }
+
+            var functionType = property.PropertyType;
+
+            if (functionType.IsGenericType)
+            {
+                if (functionType.GetGenericTypeDefinition() == typeof(Func<>)) { return CompileDynamicFuncSingleGeneric(obj, property, functionText); }
+                if (functionType.GetGenericTypeDefinition() == typeof(Func<,>)) { return CompileDynamicFuncDoubleGeneric(obj, property, functionText); }
+                return ImmutableArray<Diagnostic>.Empty;
+            }
+            
+            return ImmutableArray<Diagnostic>.Empty;
         }
 
         private HashSet<string> GetAllBehaviourNodeTagNames(IEnumerable<XmlDocument> documents)
@@ -358,6 +299,281 @@ namespace Yggdrasil.Scripting
             }
 
             return nodes;
+        }
+
+        private ImmutableArray<Diagnostic> CompileAction(object obj, PropertyInfo property, string functionText)
+        {
+            var scriptText = $@"public class FunctionBuilder
+                                {{
+                                    public static void Execute() {{ {functionText}; }} 
+
+                                    public System.Action GetFunction() {{ return Execute; }} 
+                                }}";
+
+            foreach (var name in _config.ScriptUsings) scriptText = scriptText.Insert(0, $"using {name};");
+
+            var references = _config.ReferenceAssemblyPaths
+                .Distinct()
+                .Select(p => MetadataReference.CreateFromFile(p))
+                .ToList();
+
+            var options = ScriptOptions.Default.AddReferences(references);
+            var script = CSharpScript.Create<bool>(scriptText, options);
+            var compilation = script.GetCompilation();
+
+            byte[] compiledAssembly;
+            using (var output = new MemoryStream())
+            {
+                var emitResult = compilation.Emit(output);
+                if (!emitResult.Success) return emitResult.Diagnostics;
+
+                compiledAssembly = output.ToArray();
+            }
+
+            var assembly = Assembly.Load(compiledAssembly);
+            var entryType = assembly.GetTypes().First(t => t.Name == "FunctionBuilder");
+            var instance = Activator.CreateInstance(entryType);
+            var builderMethod = entryType.GetMethod("GetFunction");
+            var function = builderMethod?.Invoke(instance, null);
+
+            property.SetValue(obj, function);
+
+            return ImmutableArray<Diagnostic>.Empty;
+        }
+
+        private ImmutableArray<Diagnostic> CompileFuncSingleGeneric<TState>(object obj, PropertyInfo property, string functionText)
+        {
+            var generics = property.PropertyType.GetGenericArguments();
+            var firstGenericType = generics[0];
+            var firstGenericName = firstGenericType.FullName?.Replace("+", ".");
+            var stateType = typeof(TState);
+            var stateTypeName = stateType.FullName?.Replace("+", ".");
+
+            string scriptText;
+            if (firstGenericType == stateType)
+            {
+                scriptText = $@"public class FunctionBuilder
+                                {{
+                                    public static void Execute({firstGenericName} state) {{ return {functionText}; }} 
+
+                                    public System.Func<{firstGenericName}> GetFunction() {{ return Execute; }} 
+                                }}";
+            }
+            else
+            {
+                scriptText = $@"public class FunctionBuilder
+                                {{
+                                    public static void Execute({firstGenericName} baseState) {{ var state = ({stateTypeName})baseState; return {functionText}; }} 
+
+                                    public System.Func<{firstGenericName}> GetFunction() {{ return Execute; }} 
+                                }}";
+            }
+
+            foreach (var name in _config.ScriptUsings) scriptText = scriptText.Insert(0, $"using {name};");
+
+            var defaultReferences = new[]
+            {
+                firstGenericType.GetTypeInfo().Assembly.Location,
+                stateType.GetTypeInfo().Assembly.Location
+            };
+
+            var references = _config.ReferenceAssemblyPaths
+                .Union(defaultReferences)
+                .Distinct()
+                .Select(p => MetadataReference.CreateFromFile(p))
+                .ToList();
+
+            var options = ScriptOptions.Default.AddReferences(references);
+            var script = CSharpScript.Create<bool>(scriptText, options);
+            var compilation = script.GetCompilation();
+
+            byte[] compiledAssembly;
+            using (var output = new MemoryStream())
+            {
+                var emitResult = compilation.Emit(output);
+                if (!emitResult.Success) return emitResult.Diagnostics;
+
+                compiledAssembly = output.ToArray();
+            }
+
+            var assembly = Assembly.Load(compiledAssembly);
+            var entryType = assembly.GetTypes().First(t => t.Name == "FunctionBuilder");
+            var instance = Activator.CreateInstance(entryType);
+            var builderMethod = entryType.GetMethod("GetFunction");
+            var function = builderMethod?.Invoke(instance, null);
+
+            property.SetValue(obj, function);
+
+            return ImmutableArray<Diagnostic>.Empty;
+        }
+
+        private ImmutableArray<Diagnostic> CompileFuncDoubleGeneric<TState>(object obj, PropertyInfo property, string functionText)
+        {
+            var generics = property.PropertyType.GetGenericArguments();
+            var firstGenericType = generics[0];
+            var secondGenericType = generics[1];
+            var firstGenericName = firstGenericType.FullName?.Replace("+", ".");
+            var secondGenericName = secondGenericType.FullName?.Replace("+", ".");
+            var stateType = typeof(TState);
+            var stateTypeName = stateType.FullName?.Replace("+", ".");
+
+            string scriptText;
+            if (firstGenericType == stateType)
+            {
+                scriptText = $@"public class FunctionBuilder
+                                {{
+                                    public static {secondGenericName} Execute({firstGenericName} state) {{ return {functionText}; }} 
+
+                                    public System.Func<{firstGenericName}, {secondGenericName}> GetFunction() {{ return Execute; }} 
+                                }}";
+            }
+            else
+            {
+                scriptText = $@"public class FunctionBuilder
+                                {{
+                                    public static {secondGenericName} Execute({firstGenericName} baseState) {{ var state = ({stateTypeName})baseState; return {functionText}; }} 
+
+                                    public System.Func<{firstGenericName}, {secondGenericName}> GetFunction() {{ return Execute; }} 
+                                }}";
+            }
+
+            foreach (var name in _config.ScriptUsings) scriptText = scriptText.Insert(0, $"using {name};");
+
+            var defaultReferences = new[]
+            {
+                firstGenericType.GetTypeInfo().Assembly.Location,
+                secondGenericType.GetTypeInfo().Assembly.Location,
+                stateType.GetTypeInfo().Assembly.Location
+            };
+
+            var references = _config.ReferenceAssemblyPaths
+                .Union(defaultReferences)
+                .Distinct()
+                .Select(p => MetadataReference.CreateFromFile(p))
+                .ToList();
+
+            var options = ScriptOptions.Default.AddReferences(references);
+            var script = CSharpScript.Create<bool>(scriptText, options);
+            var compilation = script.GetCompilation();
+
+            byte[] compiledAssembly;
+            using (var output = new MemoryStream())
+            {
+                var emitResult = compilation.Emit(output);
+                if (!emitResult.Success) return emitResult.Diagnostics;
+
+                compiledAssembly = output.ToArray();
+            }
+
+            var assembly = Assembly.Load(compiledAssembly);
+            var entryType = assembly.GetTypes().First(t => t.Name == "FunctionBuilder");
+            var instance = Activator.CreateInstance(entryType);
+            var builderMethod = entryType.GetMethod("GetFunction");
+            var function = builderMethod?.Invoke(instance, null);
+
+            property.SetValue(obj, function);
+
+            return ImmutableArray<Diagnostic>.Empty;
+        }
+
+        private ImmutableArray<Diagnostic> CompileDynamicFuncSingleGeneric(object obj, PropertyInfo property, string functionText)
+        {
+            var scriptText = $@"public class FunctionBuilder
+                                {{
+                                    public static void Execute(dynamic state) {{ return {functionText}; }} 
+
+                                    public System.Func<dynamic> GetFunction() {{ return Execute; }} 
+                                }}";
+
+            foreach (var name in _config.ScriptUsings) scriptText = scriptText.Insert(0, $"using {name};");
+
+            var defaultReferences = new[]
+            {
+                typeof(RuntimeBinderException).GetTypeInfo().Assembly.Location,
+                typeof(DynamicAttribute).GetTypeInfo().Assembly.Location
+            };
+
+            var references = _config.ReferenceAssemblyPaths
+                .Union(defaultReferences)
+                .Distinct()
+                .Select(p => MetadataReference.CreateFromFile(p))
+                .ToList();
+
+            var options = ScriptOptions.Default.AddReferences(references);
+            var script = CSharpScript.Create<bool>(scriptText, options);
+            var compilation = script.GetCompilation();
+
+            byte[] compiledAssembly;
+            using (var output = new MemoryStream())
+            {
+                var emitResult = compilation.Emit(output);
+                if (!emitResult.Success) return emitResult.Diagnostics;
+
+                compiledAssembly = output.ToArray();
+            }
+
+            var assembly = Assembly.Load(compiledAssembly);
+            var entryType = assembly.GetTypes().First(t => t.Name == "FunctionBuilder");
+            var instance = Activator.CreateInstance(entryType);
+            var builderMethod = entryType.GetMethod("GetFunction");
+            var function = builderMethod?.Invoke(instance, null);
+
+            property.SetValue(obj, function);
+
+            return ImmutableArray<Diagnostic>.Empty;
+        }
+
+        private ImmutableArray<Diagnostic> CompileDynamicFuncDoubleGeneric(object obj, PropertyInfo property, string functionText)
+        {
+            var generics = property.PropertyType.GetGenericArguments();
+            var secondGenericType = generics[1];
+            var secondGenericName = secondGenericType.FullName?.Replace("+", ".");
+
+            var scriptText = $@"using System.Dynamic;
+                                public class FunctionBuilder
+                                {{
+                                    public static {secondGenericName} Execute(dynamic state) {{ return {functionText}; }} 
+
+                                    public System.Func<dynamic, {secondGenericName}> GetFunction() {{ return Execute; }} 
+                                }}";
+
+            foreach (var name in _config.ScriptUsings) scriptText = scriptText.Insert(0, $"using {name};");
+
+            var defaultReferences = new[]
+            {
+                typeof(RuntimeBinderException).GetTypeInfo().Assembly.Location,
+                typeof(DynamicAttribute).GetTypeInfo().Assembly.Location,
+                secondGenericType.GetTypeInfo().Assembly.Location,
+            };
+
+            var references = _config.ReferenceAssemblyPaths
+                .Union(defaultReferences)
+                .Distinct()
+                .Select(p => MetadataReference.CreateFromFile(p))
+                .ToList();
+
+            var options = ScriptOptions.Default.AddReferences(references);
+            var script = CSharpScript.Create<bool>(scriptText, options);
+            var compilation = script.GetCompilation();
+
+            byte[] compiledAssembly;
+            using (var output = new MemoryStream())
+            {
+                var emitResult = compilation.Emit(output);
+                if (!emitResult.Success) return emitResult.Diagnostics;
+
+                compiledAssembly = output.ToArray();
+            }
+
+            var assembly = Assembly.Load(compiledAssembly);
+            var entryType = assembly.GetTypes().First(t => t.Name == "FunctionBuilder");
+            var instance = Activator.CreateInstance(entryType);
+            var builderMethod = entryType.GetMethod("GetFunction");
+            var function = builderMethod?.Invoke(instance, null);
+
+            property.SetValue(obj, function);
+
+            return ImmutableArray<Diagnostic>.Empty;
         }
 
         private static string ConvertToXml(string path)
