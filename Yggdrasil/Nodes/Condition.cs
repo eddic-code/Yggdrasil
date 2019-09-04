@@ -36,12 +36,12 @@ namespace Yggdrasil.Nodes
 {
     public class Condition : Node
     {
-        public Condition(CoroutineManager manager, Func<object, bool> conditional) : base(manager)
+        public Condition(Func<object, bool> conditional)
         {
             Conditional = conditional;
         }
 
-        public Condition(CoroutineManager manager) : base(manager) { }
+        public Condition() { }
 
         [XmlIgnore]
         public Func<object, bool> Conditional { get; set; } = DefaultConditional;

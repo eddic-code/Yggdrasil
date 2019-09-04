@@ -15,7 +15,7 @@ namespace Yggdrasil.Tests
         public void SequenceNodeTest()
         {
             var manager = new CoroutineManager();
-            var root = new Sequence(manager);
+            var root = new Sequence {Manager = manager};
             var stages = new Queue<string>();
 
             manager.Root = root;
@@ -96,13 +96,13 @@ namespace Yggdrasil.Tests
         public void ConditionNodeTest()
         {
             var manager = new CoroutineManager();
-            var root = new Sequence(manager);
+            var root = new Sequence {Manager = manager};
             var stages = new Queue<string>();
 
             manager.Root = root;
 
             var conditionalA = new TestConditionNode(manager) {Print="A", Stages = stages, Conditional = s => s.A};
-            var conditionalB = new Condition(manager) {Conditional = s => ((State) s).B};
+            var conditionalB = new Condition(s => ((State) s).B){Manager = manager};
             var conditionalC = new TestConditionNode(manager) {Print="C", Stages = stages, Conditional = s => s.C};
 
             root.Children = new List<Node> {conditionalA, conditionalB, conditionalC};
@@ -132,7 +132,7 @@ namespace Yggdrasil.Tests
         public void SelectorNodeTest()
         {
             var manager = new CoroutineManager();
-            var root = new Selector(manager);
+            var root = new Selector{Manager = manager};
             var stages = new Queue<string>();
 
             manager.Root = root;
@@ -217,7 +217,7 @@ namespace Yggdrasil.Tests
         public void InverterNodeTest()
         {
             var manager = new CoroutineManager();
-            var root = new Inverter(manager);
+            var root = new Inverter{Manager = manager};
             var stages = new Queue<string>();
 
             manager.Root = root;
@@ -268,7 +268,7 @@ namespace Yggdrasil.Tests
         public void FilterNodeTest()
         {
             var manager = new CoroutineManager();
-            var root = new Filter(manager);
+            var root = new Filter{Manager = manager};
             var stages = new Queue<string>();
 
             root.Conditional = s => ((State) s).A;
@@ -311,7 +311,7 @@ namespace Yggdrasil.Tests
         public void NestedCoroutinesNodeTest()
         {
             var manager = new CoroutineManager();
-            var root = new Sequence(manager);
+            var root = new Sequence{Manager = manager};
             var stages = new Queue<string>();
 
             manager.Root = root;
@@ -348,7 +348,7 @@ namespace Yggdrasil.Tests
         public void ParallelNodeTest()
         {
             var manager = new CoroutineManager();
-            var root = new Parallel(manager);
+            var root = new Parallel{Manager = manager};
             var stages = new Queue<string>();
 
             var conditionalA = new TestYieldConditionNode(manager) {PrintA="AYield", PrintB="A", Stages = stages, Conditional = s => s.A};
@@ -422,7 +422,7 @@ namespace Yggdrasil.Tests
         public void ParallelFilterNodeTest()
         {
             var manager = new CoroutineManager();
-            var root = new Interrupt(manager, s => ((State)s).C);
+            var root = new Interrupt(s => ((State)s).C){Manager = manager};
             var stages = new Queue<string>();
 
             var conditionalA = new TestYieldConditionNode(manager) {PrintA="AYield", PrintB="A", Stages = stages, Conditional = s => s.A};
@@ -488,12 +488,12 @@ namespace Yggdrasil.Tests
             var manager = new CoroutineManager();
             var stages = new Queue<string>();
 
-            var parallelA = new Parallel(manager);
-            var parallelB = new Parallel(manager);
-            var parallelC = new Parallel(manager);
+            var parallelA = new Parallel{Manager = manager};
+            var parallelB = new Parallel{Manager = manager};
+            var parallelC = new Parallel{Manager = manager};
 
-            var root = new Sequence(manager);
-            var entryCondition = new Condition(manager, s => ((State) s).Entry);
+            var root = new Sequence{Manager = manager};
+            var entryCondition = new Condition(s => ((State) s).Entry){Manager = manager};
 
             var conditionalA = new TestYieldConditionNode(manager) {PrintA="AYield", PrintB="A", Stages = stages, Conditional = s => s.A};
             var conditionalB = new TestYieldConditionNode(manager) {PrintA="BYield", PrintB="B", Stages = stages, Conditional = s => s.B};
@@ -587,7 +587,10 @@ namespace Yggdrasil.Tests
 
             public Func<State, bool> Conditional;
 
-            public TestConditionNode(CoroutineManager manager) : base(manager) { }
+            public TestConditionNode(CoroutineManager manager)
+            {
+                Manager = manager;
+            }
 
             protected override Coroutine<Result> Tick()
             {
@@ -606,7 +609,10 @@ namespace Yggdrasil.Tests
 
             public Func<State, bool> Conditional;
 
-            public TestYieldConditionNode(CoroutineManager manager) : base(manager) { }
+            public TestYieldConditionNode(CoroutineManager manager)
+            {
+                Manager = manager;
+            }
 
             protected override async Coroutine<Result> Tick()
             {
@@ -631,7 +637,10 @@ namespace Yggdrasil.Tests
 
             public Func<State, bool> Conditional;
 
-            public TestNestedConditionNode(CoroutineManager manager) : base(manager) { }
+            public TestNestedConditionNode(CoroutineManager manager)
+            {
+                Manager = manager;
+            }
 
             protected override async Coroutine<Result> Tick()
             {
@@ -669,7 +678,10 @@ namespace Yggdrasil.Tests
 
             public Func<State, bool> Conditional;
 
-            public TestRunningConditionNode(CoroutineManager manager) : base(manager) { }
+            public TestRunningConditionNode(CoroutineManager manager)
+            {
+                Manager = manager;
+            }
 
             protected override async Coroutine<Result> Tick()
             {

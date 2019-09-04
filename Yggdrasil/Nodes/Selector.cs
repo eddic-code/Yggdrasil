@@ -34,8 +34,6 @@ namespace Yggdrasil.Nodes
 {
     public class Selector : Node
     {
-        public Selector(CoroutineManager manager) : base(manager) { }
-
         protected override async Coroutine<Result> Tick()
         {
             if (Children == null || Children.Count <= 0) { return Result.Failure; }

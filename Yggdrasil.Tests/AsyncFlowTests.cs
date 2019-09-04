@@ -49,10 +49,7 @@ namespace Yggdrasil.Tests
         {
             public Queue<string> Stages;
 
-            public TestNode(CoroutineManager manager) : base(manager)
-            {
-
-            }
+            public TestNode(CoroutineManager manager) { Manager = manager; }
 
             protected override async Coroutine<Result> Tick()
             {
@@ -136,10 +133,7 @@ namespace Yggdrasil.Tests
         {
             public Queue<string> Stages;
 
-            public NestedCoroutinesTestNode(CoroutineManager manager) : base(manager)
-            {
-
-            }
+            public NestedCoroutinesTestNode(CoroutineManager manager) { Manager = manager; }
 
             protected override async Coroutine<Result> Tick()
             {
@@ -260,10 +254,7 @@ namespace Yggdrasil.Tests
         {
             public Queue<string> Stages;
 
-            public LoopTestNode(CoroutineManager manager) : base(manager)
-            {
-
-            }
+            public LoopTestNode(CoroutineManager manager) { Manager = manager; }
 
             protected override async Coroutine<Result> Tick()
             {

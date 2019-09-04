@@ -1,8 +1,9 @@
-﻿using System.Dynamic;
-using System.Linq;
-using System.Reflection;
+﻿using System.Collections.Generic;
+using System.Dynamic;
+using System.Xml.Serialization;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Yggdrasil.Coroutines;
+using Yggdrasil.Enums;
 using Yggdrasil.Nodes;
 using Yggdrasil.Scripting;
 
@@ -123,6 +124,7 @@ namespace Yggdrasil.Tests
             var config = new YggParserConfig();
 
             config.NodeTypeAssemblies.Add(typeof(Node).Assembly.GetName().Name);
+            config.NodeTypeAssemblies.Add(typeof(ParameterizedTestNode).Assembly.GetName().Name);
 
             var manager = new CoroutineManager();
             var parser = new YggParser(config);
@@ -130,7 +132,7 @@ namespace Yggdrasil.Tests
 
             Assert.IsTrue(context.Success);
             Assert.AreEqual(0, context.Errors.Count);
-            Assert.AreEqual(3, nodes.Count);
+            Assert.AreEqual(4, nodes.Count);
 
             // MyCustomTypeA
             var nodeA = nodes[0];
@@ -189,6 +191,24 @@ namespace Yggdrasil.Tests
             Assert.AreEqual("K", nodeK.Guid);
             Assert.AreEqual(typeof(Sequence), nodeK.GetType());
             CheckMyCustomTypeB(nodeK);
+
+            // Parameterized node.
+            var nodeL = nodes[3];
+            Assert.AreEqual("L", nodeL.Guid);
+            Assert.AreEqual(typeof(ParameterizedTestNode), nodeL.GetType());
+            Assert.AreEqual(7, nodeL.Children.Count);
+
+            var parameterizedNode = (ParameterizedTestNode)nodeL;
+            Assert.AreEqual(1, parameterizedNode.PropertyA);
+            Assert.AreEqual(2, parameterizedNode.FieldA);
+            Assert.AreEqual("hello", parameterizedNode.PropertyB);
+            Assert.AreEqual("goodbye", parameterizedNode.FieldB);
+            Assert.AreEqual(3, parameterizedNode.PropertyC);
+            Assert.AreEqual(4, parameterizedNode.FieldC);
+            Assert.AreEqual(3, parameterizedNode.ArrayPropertyA.Count);
+            Assert.AreEqual("one", parameterizedNode.ArrayPropertyA[0].PropertyA);
+            Assert.AreEqual("two", parameterizedNode.ArrayPropertyA[1].PropertyA);
+            Assert.AreEqual("three", parameterizedNode.ArrayPropertyA[2].PropertyA);
         }
 
         private static void CheckMyCustomTypeA(Node node)
@@ -235,6 +255,43 @@ namespace Yggdrasil.Tests
         {
             public int A, B, C, D, E;
             public string FirstName, SecondName, ThirdName;
+        }
+
+        public class ParameterizedTestNode : Node
+        {
+            [XmlAttribute]
+            public int PropertyA { get; set; }
+
+            [XmlAttribute]
+            public int FieldA;
+
+            [XmlAttribute]
+            public string PropertyB { get; set; }
+
+            [XmlAttribute]
+            public string FieldB;
+
+            [XmlElement]
+            public int PropertyC { get; set; }
+
+            [XmlElement]
+            public int FieldC { get; set; }
+
+            [XmlArray]
+            [XmlArrayItem(nameof(TestArrayItem))]
+            public List<TestArrayItem> ArrayPropertyA { get; set; }
+
+            protected override Coroutine<Result> Tick()
+            {
+                return Success;
+            }
+        }
+
+        [XmlType]
+        public class TestArrayItem
+        {
+            [XmlAttribute]
+            public string PropertyA { get; set; }
         }
     }
 }

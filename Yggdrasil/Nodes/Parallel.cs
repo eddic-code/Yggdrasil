@@ -42,8 +42,6 @@ namespace Yggdrasil.Nodes
         [XmlIgnore]
         private List<Node> _children;
 
-        public Parallel(CoroutineManager manager) : base(manager) { }
-
         [XmlIgnore]
         public override List<Node> Children
         {

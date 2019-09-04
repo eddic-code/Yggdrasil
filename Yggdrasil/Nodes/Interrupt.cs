@@ -43,12 +43,12 @@ namespace Yggdrasil.Nodes
         [XmlIgnore]
         private List<Node> _children;
 
-        public Interrupt(CoroutineManager manager, Func<object, bool> conditional) : base(manager)
+        public Interrupt(Func<object, bool> conditional)
         {
             Conditional = conditional;
         }
 
-        public Interrupt(CoroutineManager manager) : base(manager) { }
+        public Interrupt() { }
 
         [XmlIgnore]
         public override List<Node> Children

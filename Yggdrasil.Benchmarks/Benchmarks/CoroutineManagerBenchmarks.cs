@@ -30,12 +30,12 @@ namespace Yggdrasil.Benchmarks
         public void SetupNestedParallel()
         {
             _managerA = new CoroutineManager();
-            var parallelA = new Parallel(_managerA);
-            var parallelB = new Parallel(_managerA);
-            var parallelC = new Parallel(_managerA);
+            var parallelA = new Parallel {Manager = _managerA};
+            var parallelB = new Parallel {Manager = _managerA};
+            var parallelC = new Parallel {Manager = _managerA};
 
-            var root = new Sequence(_managerA);
-            var entryCondition = new Condition(_managerA, s => ((State) s).Entry);
+            var root = new Sequence{Manager = _managerA};
+            var entryCondition = new Condition(s => ((State) s).Entry) {Manager = _managerA};
 
             var conditionalA = new TestYieldConditionNode(_managerA) {Conditional = s => s.A};
             var conditionalB = new TestYieldConditionNode(_managerA) {Conditional = s => s.B};
@@ -58,7 +58,7 @@ namespace Yggdrasil.Benchmarks
         public void SetupParallel()
         {
             _managerB = new CoroutineManager();
-            var root = new Parallel(_managerB);
+            var root = new Parallel {Manager = _managerB};
 
             var conditionalA = new TestYieldConditionNode(_managerB) {Conditional = s => s.A};
             var conditionalB = new TestNestedConditionNode(_managerB) {Conditional = s => s.B};
@@ -92,7 +92,7 @@ namespace Yggdrasil.Benchmarks
         public void SetupSequence()
         {
             _managerE = new CoroutineManager();
-            var root = new Sequence(_managerE);
+            var root = new Sequence {Manager = _managerE};
 
             var conditionalA = new TestConditionNode(_managerE) {Conditional = s => s.A};
             var conditionalB = new TestYieldConditionNode(_managerE) {Conditional = s => s.B};
@@ -109,7 +109,7 @@ namespace Yggdrasil.Benchmarks
         public void SetupDynamicSequence()
         {
             _managerF = new CoroutineManager();
-            var root = new Sequence(_managerF);
+            var root = new Sequence {Manager = _managerF};
 
             var conditionalA = new TestDynamicConditionNode(_managerF) {Conditional = s => s.A};
             var conditionalB = new TestDynamicYieldConditionNode(_managerF) {Conditional = s => s.B};
@@ -177,7 +177,7 @@ namespace Yggdrasil.Benchmarks
         {
             public Func<State, bool> Conditional;
 
-            public TestYieldConditionNode(CoroutineManager manager) : base(manager) { }
+            public TestYieldConditionNode(CoroutineManager manager) { Manager = manager; }
 
             protected override async Coroutine<Result> Tick()
             {
@@ -191,7 +191,7 @@ namespace Yggdrasil.Benchmarks
         {
             public Func<State, bool> Conditional;
 
-            public TestRunningConditionNode(CoroutineManager manager) : base(manager) { }
+            public TestRunningConditionNode(CoroutineManager manager) { Manager = manager; }
 
             protected override async Coroutine<Result> Tick()
             {
@@ -209,7 +209,7 @@ namespace Yggdrasil.Benchmarks
         {
             public Func<State, bool> Conditional;
 
-            public TestConditionNode(CoroutineManager manager) : base(manager) { }
+            public TestConditionNode(CoroutineManager manager) { Manager = manager; }
 
             protected override Coroutine<Result> Tick()
             {
@@ -221,7 +221,7 @@ namespace Yggdrasil.Benchmarks
         {
             public Func<State, bool> Conditional;
 
-            public TestNestedConditionNode(CoroutineManager manager) : base(manager) { }
+            public TestNestedConditionNode(CoroutineManager manager) { Manager = manager; }
 
             protected override async Coroutine<Result> Tick()
             {
@@ -247,10 +247,7 @@ namespace Yggdrasil.Benchmarks
 
         private class GenericCoroutineTestNode : Node
         {
-            public GenericCoroutineTestNode(CoroutineManager manager) : base(manager)
-            {
-
-            }
+            public GenericCoroutineTestNode(CoroutineManager manager) { Manager = manager; }
 
             protected override async Coroutine<Result> Tick()
             {
@@ -295,10 +292,7 @@ namespace Yggdrasil.Benchmarks
 
         private class NestedCoroutineTestNode : Node
         {
-            public NestedCoroutineTestNode(CoroutineManager manager) : base(manager)
-            {
-
-            }
+            public NestedCoroutineTestNode(CoroutineManager manager) { Manager = manager; }
 
             protected override async Coroutine<Result> Tick()
             {
@@ -353,7 +347,7 @@ namespace Yggdrasil.Benchmarks
         {
             public Func<dynamic, bool> Conditional;
 
-            public TestDynamicConditionNode(CoroutineManager manager) : base(manager) { }
+            public TestDynamicConditionNode(CoroutineManager manager) { Manager = manager; }
 
             protected override Coroutine<Result> Tick()
             {
@@ -365,7 +359,7 @@ namespace Yggdrasil.Benchmarks
         {
             public Func<dynamic, bool> Conditional;
 
-            public TestDynamicYieldConditionNode(CoroutineManager manager) : base(manager) { }
+            public TestDynamicYieldConditionNode(CoroutineManager manager) { Manager = manager; }
 
             protected override async Coroutine<Result> Tick()
             {

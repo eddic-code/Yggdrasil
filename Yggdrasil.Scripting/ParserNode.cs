@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Xml;
+using System.Xml.Serialization;
 using Yggdrasil.Coroutines;
 using Yggdrasil.Nodes;
 
@@ -52,7 +53,11 @@ namespace Yggdrasil.Scripting
         private Node CreateStaticTypeInstance(CoroutineManager manager, Dictionary<string, ParserNode> typeDefMap, List<BuildError> errors)
         {
             Node instance;
-            try { instance = Activator.CreateInstance(Type, manager) as Node; }
+            try
+            {
+                var serializer = new XmlSerializer(Type);
+                instance = serializer.Deserialize(new XmlNodeReader(Xml)) as Node;
+            }
             catch (Exception e)
             {
                 var error = new BuildError {Message = $"Could not instantiate node of type {Tag}. {e.Message}", Target = File, SecondTarget = Xml.Value};
@@ -67,6 +72,7 @@ namespace Yggdrasil.Scripting
                 return null;
             }
 
+            instance.Manager = manager;
             instance.Guid = Guid;
 
             foreach (var parserChild in Children)

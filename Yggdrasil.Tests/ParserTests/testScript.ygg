@@ -16,3 +16,20 @@
 <Inverter Guid="J">
   <MyCustomTypeB Guid="K"/>
 </Inverter>
+
+<ParameterizedTestNode Guid="L" TypeDef="MyCustomTypeC" PropertyA="1" FieldA="2" PropertyB="hello" FieldB="goodbye">
+  <PropertyC>3</PropertyC>
+  <Condition/>
+  <Inverter/>
+  <Filter/>
+  <Parallel/>
+  <Interrupt/>
+  <Sequence/>
+  <Selector/>
+  <FieldC>4</FieldC>
+  <ArrayPropertyA>
+    <TestArrayItem PropertyA = "one"/>
+    <TestArrayItem PropertyA = "two"/>
+    <TestArrayItem PropertyA = "three"/>
+  </ArrayPropertyA>
+</ParameterizedTestNode>

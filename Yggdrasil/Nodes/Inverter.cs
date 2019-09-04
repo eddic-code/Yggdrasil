@@ -35,8 +35,6 @@ namespace Yggdrasil.Nodes
 {
     public class Inverter : Node
     {
-        public Inverter(CoroutineManager manager) : base(manager) { }
-
         [XmlIgnore]
         public Node Child
         {

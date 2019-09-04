@@ -37,12 +37,7 @@ namespace Yggdrasil.Nodes
     public abstract class Node
     {
         [XmlIgnore]
-        protected readonly CoroutineManager Manager;
-
-        protected Node(CoroutineManager manager)
-        {
-            Manager = manager;
-        }
+        public CoroutineManager Manager;
 
         [XmlIgnore]
         protected Coroutine Yield => Manager.Yield;
