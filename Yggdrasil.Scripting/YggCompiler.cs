@@ -28,11 +28,13 @@
 #endregion
 
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Scripting;
@@ -46,11 +48,89 @@ namespace Yggdrasil.Scripting
         private static readonly Regex _returnStatement =
             new Regex("return[\\s\n\r]+.+[\\s\n\r]*;", RegexOptions.Compiled);
 
+        private static readonly string[] _invalidFunctionCharacters = {"-", ";", ".", ",", " ", "\n", "\r"};
+
         private readonly YggParserConfig _config;
 
         public YggCompiler(YggParserConfig config = null)
         {
             _config = config ?? new YggParserConfig();
+        }
+
+        public ScriptedFunction CreateScriptedFunction<TState>(string guid, PropertyInfo property, string functionText)
+        {
+            var propertyName = property.Name;
+            var builderName = GetFunctionName("B", guid, propertyName);
+            var functionName = GetFunctionName("F", guid, propertyName);
+            var functionType = property.PropertyType;
+            var genericTypeDefinition = functionType.GetGenericTypeDefinition();
+            var hasReturnStatement = _returnStatement.IsMatch(functionText);
+            var returnOpenText = hasReturnStatement ? string.Empty : "return ";
+            var returnCloseText = hasReturnStatement ? string.Empty : ";";
+            var stateType = typeof(TState);
+            var stateTypeName = stateType.FullName?.Replace("+", ".");
+            var generics = property.PropertyType.GetGenericArguments();
+            var firstGenericType = generics.Length > 0 ? generics[0] : null;
+            var firstGenericName = firstGenericType?.FullName?.Replace("+", ".");
+            var secondGenericType = generics.Length > 1 ? generics[1] : null;
+            var secondGenericName = secondGenericType?.FullName?.Replace("+", ".");
+            var isSameType = firstGenericType == stateType;
+
+            var sf = new ScriptedFunction();
+            sf.PropertyName = propertyName;
+            sf.BuilderName = builderName;
+            sf.FunctionName = functionName;
+            sf.FunctionText = functionText;
+            sf.Usings = new HashSet<string>(_config.ScriptUsings.Select(s => $"using {s};"));
+
+            // References.
+            sf.References.Add(stateType.GetTypeInfo().Assembly.Location);
+            if (firstGenericType != null) { sf.References.Add(firstGenericType.GetTypeInfo().Assembly.Location); }
+            if (secondGenericType != null) { sf.References.Add(secondGenericType.GetTypeInfo().Assembly.Location); }
+            foreach (var reference in _config.ReferenceAssemblyPaths) { sf.References.Add(reference); }
+
+            // Action.
+            if (functionType == typeof(Action))
+            {
+                sf.ScriptText = $@"public static void {functionName}() {{ {functionText}; }} 
+                                   public System.Action {builderName}() {{ return {functionName}; }}";
+                return sf;
+            }
+
+            // Action with single generic.
+            if (functionType.IsGenericType && genericTypeDefinition == typeof(Action<>))
+            {
+                sf.ScriptText = isSameType
+                    ? $@"public static void {functionName}({firstGenericName} state) {{ {returnOpenText}{functionText}{returnCloseText} }} 
+                         public System.Action<{firstGenericName}> {builderName}() {{ return {functionName}; }} " 
+                    : $@"public static void {functionName}({firstGenericName} baseState) {{ var state = ({stateTypeName})baseState; {returnOpenText}{functionText}{returnCloseText} }} 
+                         public System.Action<{firstGenericName}> {builderName}() {{ return {functionName}; }} ";
+
+                return sf;
+            }
+
+            // Function with single generic.
+            if (functionType.IsGenericType && genericTypeDefinition == typeof(Func<>))
+            {
+                sf.ScriptText = $@"public static {firstGenericName} {functionName}() {{ {returnOpenText}{functionText}{returnCloseText} }} 
+                                   public System.Func<{firstGenericName}> {builderName}() {{ return {functionName}; }}";
+
+                return sf;
+            }
+
+            // Function with double generic.
+            if (functionType.IsGenericType && genericTypeDefinition == typeof(Func<,>))
+            {
+                sf.ScriptText = isSameType
+                    ? $@"public static {secondGenericName} {functionName}({firstGenericName} state) {{ {returnOpenText}{functionText}{returnCloseText} }} 
+                         public System.Func<{firstGenericName}, {secondGenericName}> {builderName}() {{ return {functionName}; }}" 
+                    : $@"public static {secondGenericName} {functionName}({firstGenericName} baseState) {{ var state = ({stateTypeName})baseState; {returnOpenText}{functionText}{returnCloseText} }} 
+                         public System.Func<{firstGenericName}, {secondGenericName}> {builderName}() {{ return {functionName}; }}";
+
+                return sf;
+            }
+
+            return null;
         }
 
         public ImmutableArray<Diagnostic> CompileFunction<TState>(object obj, string propertyName, string functionText)
@@ -486,6 +566,21 @@ namespace Yggdrasil.Scripting
             property.SetValue(obj, function);
 
             return ImmutableArray<Diagnostic>.Empty;
+        }
+
+        private static string GetFunctionName(string type, string guid, string propertyName)
+        {
+            var name = new StringBuilder();
+
+            name.Append(type);
+            name.Append("_");
+            name.Append(guid);
+            name.Append("_");
+            name.Append(propertyName);
+
+            foreach (var character in _invalidFunctionCharacters) { name.Replace(character, ""); }
+
+            return name.ToString();
         }
     }
 }
