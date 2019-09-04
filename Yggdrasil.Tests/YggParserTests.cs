@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Dynamic;
+﻿using System.Collections.Generic;
 using System.Xml.Serialization;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Yggdrasil.Coroutines;
@@ -58,84 +56,6 @@ namespace Yggdrasil.Tests
         manager.Update(new State { A = true, B = true, C = true});";
 
             Assert.AreEqual(innerTextE, document.SelectSingleNode("/__Main/FilterD/NodeA/NodeE").InnerText);
-        }
-
-        [TestMethod]
-        public void DynamicFunctionCompilationTest()
-        {
-            const string textA = @"state.A >= state.B || state.C <= state.D";
-            const string textB = @"state.A >= state.B || state.C >= state.D";
-            const string textC = @"state.FirstName != state.SecondName && state.FirstName == state.ThirdName";
-
-            var parser = new YggParser();
-            dynamic state = new ExpandoObject();
-
-            state.A = 1;
-            state.B = 2;
-            state.C = 3;
-            state.D = 4;
-            state.E = 5;
-            state.FirstName = "dimitri";
-            state.SecondName = "edelgard";
-            state.ThirdName = "dimitri";
-
-            var conditionA = new TestDynamicConditionDouble();
-            var conditionB = new TestDynamicConditionDouble();
-            var conditionC = new TestDynamicConditionDouble();
-
-            var errors = parser.CompileDynamicFunction(conditionA, "Conditional", textA);
-            Assert.AreEqual(0, errors.Length);
-            Assert.IsNotNull(conditionA.Conditional);
-            Assert.IsTrue(conditionA.Conditional(state));
-
-            errors = parser.CompileDynamicFunction(conditionB, "Conditional", textB);
-            Assert.AreEqual(0, errors.Length);
-            Assert.IsNotNull(conditionB.Conditional);
-            Assert.IsFalse(conditionB.Conditional(state));
-
-            errors = parser.CompileDynamicFunction(conditionC, "Conditional", textC);
-            Assert.AreEqual(0, errors.Length);
-            Assert.IsNotNull(conditionC.Conditional);
-            Assert.IsTrue(conditionC.Conditional(state));
-        }
-
-        [TestMethod]
-        public void FunctionCompilationTest()
-        {
-            const string textA = @"state.A >= state.B || state.C <= state.D";
-            const string textB = @"state.A >= state.B || state.C >= state.D";
-            const string textC = @"state.FirstName != state.SecondName && state.FirstName == state.ThirdName";
-
-            var parser = new YggParser();
-            var state = new TestState();
-
-            state.A = 1;
-            state.B = 2;
-            state.C = 3;
-            state.D = 4;
-            state.E = 5;
-            state.FirstName = "dimitri";
-            state.SecondName = "edelgard";
-            state.ThirdName = "dimitri";
-
-            var conditionA = new Condition();
-            var conditionB = new Condition();
-            var conditionC = new Condition();
-
-            var errors = parser.CompileFunction<TestState>(conditionA, "Conditional", textA);
-            Assert.AreEqual(0, errors.Length);
-            Assert.IsNotNull(conditionA.Conditional);
-            Assert.IsTrue(conditionA.Conditional(state));
-
-            errors = parser.CompileFunction<TestState>(conditionB, "Conditional", textB);
-            Assert.AreEqual(0, errors.Length);
-            Assert.IsNotNull(conditionB.Conditional);
-            Assert.IsFalse(conditionB.Conditional(state));
-
-            errors = parser.CompileFunction<TestState>(conditionC, "Conditional", textC);
-            Assert.AreEqual(0, errors.Length);
-            Assert.IsNotNull(conditionC.Conditional);
-            Assert.IsTrue(conditionC.Conditional(state));
         }
 
         [TestMethod]
@@ -313,26 +233,6 @@ namespace Yggdrasil.Tests
         {
             [XmlAttribute]
             public string PropertyA { get; set; }
-        }
-
-        public class TestDynamicConditionDouble : Node
-        {
-            public Func<dynamic, bool> Conditional { get; set; }
-
-            protected override Coroutine<Result> Tick()
-            {
-                throw new NotImplementedException();
-            }
-        }
-
-        public class TestDynamicConditionSingle: Node
-        {
-            public Func<dynamic> Conditional { get; set; }
-
-            protected override Coroutine<Result> Tick()
-            {
-                throw new NotImplementedException();
-            }
         }
     }
 }

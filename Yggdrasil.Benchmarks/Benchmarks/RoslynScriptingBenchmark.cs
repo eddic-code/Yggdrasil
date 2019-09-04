@@ -76,7 +76,7 @@ namespace Yggdrasil.Benchmarks
             _derivedDynamicFunction = s => derivedDynamicConditional.Execute(s);
 
             _reflectedCondition = new Condition();
-            var parser = new YggParser();
+            var parser = new YggCompiler();
             parser.CompileFunction<TestGenericState>(_reflectedCondition, "Conditional", script);
 
             // Warmup.
