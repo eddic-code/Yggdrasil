@@ -29,6 +29,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Xml.Serialization;
 using Yggdrasil.Coroutines;
 using Yggdrasil.Enums;
 
@@ -36,7 +37,10 @@ namespace Yggdrasil.Nodes
 {
     public class Interrupt : Node
     {
+        [XmlIgnore]
         private readonly List<CoroutineThread> _threads = new List<CoroutineThread>(10);
+
+        [XmlIgnore]
         private List<Node> _children;
 
         public Interrupt(CoroutineManager manager, Func<object, bool> conditional) : base(manager)
@@ -46,6 +50,7 @@ namespace Yggdrasil.Nodes
 
         public Interrupt(CoroutineManager manager) : base(manager) { }
 
+        [XmlIgnore]
         public override List<Node> Children
         {
             get => _children;
@@ -65,6 +70,7 @@ namespace Yggdrasil.Nodes
             }
         }
 
+        [XmlIgnore]
         public Func<object, bool> Conditional { get; set; } = DefaultConditional;
 
         public override void Terminate()

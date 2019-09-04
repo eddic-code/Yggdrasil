@@ -27,6 +27,7 @@
 
 #endregion
 
+using System.Xml.Serialization;
 using Yggdrasil.Coroutines;
 using Yggdrasil.Enums;
 
@@ -36,6 +37,7 @@ namespace Yggdrasil.Nodes
     {
         public Inverter(CoroutineManager manager) : base(manager) { }
 
+        [XmlIgnore]
         public Node Child
         {
             get

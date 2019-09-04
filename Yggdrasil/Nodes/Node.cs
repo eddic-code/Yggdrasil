@@ -28,6 +28,7 @@
 #endregion
 
 using System.Collections.Generic;
+using System.Xml.Serialization;
 using Yggdrasil.Coroutines;
 using Yggdrasil.Enums;
 
@@ -35,6 +36,7 @@ namespace Yggdrasil.Nodes
 {
     public abstract class Node
     {
+        [XmlIgnore]
         protected readonly CoroutineManager Manager;
 
         protected Node(CoroutineManager manager)
@@ -42,13 +44,22 @@ namespace Yggdrasil.Nodes
             Manager = manager;
         }
 
+        [XmlIgnore]
         protected Coroutine Yield => Manager.Yield;
+
+        [XmlIgnore]
         protected Coroutine<Result> Success => Coroutine<Result>.CreateWith(Result.Success);
+
+        [XmlIgnore]
         protected Coroutine<Result> Failure => Coroutine<Result>.CreateWith(Result.Failure);
+
+        [XmlIgnore]
         protected object State => Manager.State;
 
+        [XmlIgnore]
         public virtual List<Node> Children { get; set; } = new List<Node>();
 
+        [XmlIgnore]
         public string Guid { get; set; }
 
         public async Coroutine<Result> Execute()
@@ -69,7 +80,9 @@ namespace Yggdrasil.Nodes
         public virtual void Terminate() { }
 
         protected virtual void Start() { }
+
         protected virtual void Stop() { }
+
         protected abstract Coroutine<Result> Tick();
     }
 }

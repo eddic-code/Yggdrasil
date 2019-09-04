@@ -48,8 +48,8 @@ namespace Yggdrasil.Scripting
 {
     public class YggParser
     {
-        private const string GuidAttribute = "guid";
-        private const string TypeDefAttribute = "typedef";
+        private const string GuidAttribute = "Guid";
+        private const string TypeDefAttribute = "TypeDef";
 
         private static readonly Regex _scriptRegex = new Regex("[>=]*[\\s\n\r]*`[\\s\n\r]*(.*?)[\\s\n\r]*`[\\s\n\r]*<*",
             RegexOptions.Singleline | RegexOptions.Compiled);
@@ -191,6 +191,7 @@ namespace Yggdrasil.Scripting
             var output = new List<Node>();
             var parserNodes = new List<ParserNode>();
             var guids = new Dictionary<string, ParserNode>();
+            var documents = new Dictionary<string, XmlDocument>();
             var typeDefMap = new Dictionary<string, ParserNode>();
 
             // Extract all parser nodes from files.
@@ -212,8 +213,27 @@ namespace Yggdrasil.Scripting
                     continue;
                 }
 
+                documents[file] = xmlDocument;
+            }
+
+            // Extract all behaviour node tags.
+            var nodeTypeTags = GetAllBehaviourNodeTagNames(documents.Values);
+
+            // Extract nodes from documents.
+            foreach (var kvp in documents)
+            {
+                // Early exit if there are critical errors.
+                if (context.Errors.Count(e => e.IsCritical) > 0)
+                {
+                    context.Success = false;
+                    return (output, context);
+                }
+
+                var file = kvp.Key;
+                var document = kvp.Value;
+
                 // Extract nodes from document.
-                var fileNodes = Expand(file, xmlDocument, typeDefMap, context.Errors, guids);
+                var fileNodes = Expand(file, document, typeDefMap, context.Errors, guids, nodeTypeTags);
                 parserNodes.AddRange(fileNodes);
             }
 
@@ -235,8 +255,32 @@ namespace Yggdrasil.Scripting
             return (output, context);
         }
 
+        private HashSet<string> GetAllBehaviourNodeTagNames(IEnumerable<XmlDocument> documents)
+        {
+            var nodeTypes = new HashSet<string>(BaseNodeMap.Keys);
+
+            foreach (var document in documents)
+            {
+                var elements = document.SelectNodes("//*[@TypeDef]");
+                if (elements == null || elements.Count <= 0) { continue; }
+
+                foreach (var element in elements)
+                {
+                    var node = (XmlNode) element;
+                    if (node.NodeType != XmlNodeType.Element) { continue; }
+
+                    var typeDef = GetAttribute(node, TypeDefAttribute)?.Value;
+                    if (string.IsNullOrEmpty(typeDef)) { continue; }
+
+                    nodeTypes.Add(typeDef);
+                }
+            }
+
+            return nodeTypes;
+        }
+
         private List<ParserNode> Expand(string file, XmlDocument document, Dictionary<string, ParserNode> typeDefMap, 
-            List<BuildError> errors, Dictionary<string, ParserNode> guids)
+            List<BuildError> errors, Dictionary<string, ParserNode> guids, HashSet<string> nodeTags)
         {
             var rootXml = document.SelectSingleNode("/__Main");
             var root = new ParserNode {Xml = rootXml, Tag = "__Main", File = file};
@@ -252,13 +296,22 @@ namespace Yggdrasil.Scripting
 
                 next.Children = new List<ParserNode>();
 
-                foreach (var xmlChild in GetChildren(next.Xml))
+                foreach (var xmlChild in GetChildren(next.Xml).ToList())
                 {
                     if (xmlChild.NodeType != XmlNodeType.Element) { continue; }
+                    
+                    // Determine if the element is a behaviour node.
                     var tag = xmlChild.Name;
+                    if (!nodeTags.Contains(tag)) { continue; }
 
-                    // Determine its guid. Check repetitions.
-                    var guid = GetAttributeToLower(xmlChild, GuidAttribute)?.Value;
+                    // Remove this child element from the parent's xml.
+                    next.Xml.RemoveChild(xmlChild);
+
+                    // Determine its guid. Check repetitions. Remove guid attribute from the xml.
+                    var guidAttribute = GetAttribute(xmlChild, GuidAttribute);
+                    var guid = guidAttribute?.Value;
+                    if (guidAttribute != null) { xmlChild.Attributes?.Remove(guidAttribute); }
+
                     if (string.IsNullOrWhiteSpace(guid)) { guid = GetRandomGuid(guids); }
                     else if (guids.TryGetValue(guid, out var prev))
                     {
@@ -266,30 +319,37 @@ namespace Yggdrasil.Scripting
                         continue;
                     }
 
-                    var n = new ParserNode {Xml = xmlChild, Tag = tag, File = file, Guid = guid};
-                    n.IsTopmost = next == root;
-                    guids[guid] = n;
+                    // Search for a type definition attribute on the node. Remove typedef attribute from the xml.
+                    var typeDefAttriute = GetAttribute(xmlChild, TypeDefAttribute);
+                    var typeDef = typeDefAttriute?.Value;
+                    if (typeDefAttriute != null) { xmlChild.Attributes?.Remove(typeDefAttriute); }
 
-                    // Try resolve the node type.
+                    // Check TypeDef repetitions.
+                    if (!string.IsNullOrWhiteSpace(typeDef) && typeDefMap.TryGetValue(typeDef, out var prevTypeDef))
+                    {
+                        errors.Add(new BuildError {IsCritical = true, Message = $"Repeated TypeDef identifier: {typeDef}", Target = prevTypeDef.File, SecondTarget = file});
+                        continue;
+                    }
+
+                    // Create the parser node.
+                    var n = new ParserNode
+                    {
+                        Xml = xmlChild, 
+                        Tag = tag, 
+                        File = file, 
+                        Guid = guid, 
+                        TypeDef = typeDef, 
+                        IsTopmost = next == root
+                    };
+
+                    // Try resolve the node type from a compiled type.
                     if (BaseNodeMap.TryGetValue(tag, out var type))
                     {
                         n.Type = type;
                     }
 
-                    // Search for a type definition attribute on the node.
-                    n.TypeDef = GetAttributeToLower(xmlChild, TypeDefAttribute)?.Value;
-                    if (!string.IsNullOrWhiteSpace(n.TypeDef))
-                    {
-                        // Check TypeDef repetitions.
-                        if (typeDefMap.TryGetValue(n.TypeDef, out var prev))
-                        {
-                            errors.Add(new BuildError {IsCritical = true, Message = $"Repeated TypeDef identifier: {n.TypeDef}", Target = prev.File, SecondTarget = n.File});
-                        }
-                        else
-                        {
-                            typeDefMap[n.TypeDef] = n;
-                        }
-                    }
+                    guids[guid] = n;
+                    if (!string.IsNullOrWhiteSpace(typeDef)) { typeDefMap[typeDef] = n; }
 
                     next.Children.Add(n);
                     nodes.Add(n);
@@ -341,9 +401,9 @@ namespace Yggdrasil.Scripting
             return guid;
         }
 
-        private static XmlAttribute GetAttributeToLower(XmlNode node, string attributeName)
+        private static XmlAttribute GetAttribute(XmlNode node, string attributeName)
         {
-            return GetAttributes(node).FirstOrDefault(a => a.Name.ToLowerInvariant() == attributeName);
+            return GetAttributes(node).FirstOrDefault(a => a.Name == attributeName);
         }
 
         private static IEnumerable<XmlAttribute> GetAttributes(XmlNode xml)

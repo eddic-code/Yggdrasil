@@ -28,6 +28,7 @@
 #endregion
 
 using System;
+using System.Xml.Serialization;
 using Yggdrasil.Coroutines;
 using Yggdrasil.Enums;
 
@@ -42,6 +43,7 @@ namespace Yggdrasil.Nodes
 
         public Condition(CoroutineManager manager) : base(manager) { }
 
+        [XmlIgnore]
         public Func<object, bool> Conditional { get; set; } = DefaultConditional;
 
         protected override Coroutine<Result> Tick()

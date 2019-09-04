@@ -28,6 +28,7 @@
 #endregion
 
 using System.Collections.Generic;
+using System.Xml.Serialization;
 using Yggdrasil.Coroutines;
 using Yggdrasil.Enums;
 
@@ -35,11 +36,15 @@ namespace Yggdrasil.Nodes
 {
     public class Parallel : Node
     {
+        [XmlIgnore]
         private readonly List<CoroutineThread> _threads = new List<CoroutineThread>(10);
+
+        [XmlIgnore]
         private List<Node> _children;
 
         public Parallel(CoroutineManager manager) : base(manager) { }
 
+        [XmlIgnore]
         public override List<Node> Children
         {
             get => _children;
