@@ -31,8 +31,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Xml;
+using Yggdrasil.Attributes;
 using Yggdrasil.Coroutines;
 using Yggdrasil.Nodes;
 
@@ -78,75 +80,43 @@ namespace Yggdrasil.Scripting
             return document;
         }
 
-        public (List<Node> Nodes, BuildContext Context) BuildFromFile(CoroutineManager manager, string file)
-        {
-            var files = new List<string> {file};
-            return BuildFromFiles(manager, files);
-        }
-
-        public (List<Node> Nodes, BuildContext Context) BuildFromFiles(CoroutineManager manager, List<string> files)
+        public (List<Node> Nodes, BuildContext Context) BuildFromFiles<TState>(CoroutineManager manager,
+            params string[] files)
         {
             var context = new BuildContext();
             var output = new List<Node>();
-            var parserNodes = new List<ParserNode>();
-            var guids = new Dictionary<string, ParserNode>();
-            var documents = new Dictionary<string, XmlDocument>();
             var typeDefMap = new Dictionary<string, ParserNode>();
 
-            // Extract all parser nodes from files.
-            foreach (var file in files)
-            {
-                // Check file exists.
-                if (!File.Exists(file))
-                {
-                    context.Errors.Add(new BuildError {Message = "File does not exit.", Target = file});
-                    continue;
-                }
+            // Load all xml documents from files.
+            var documents = LoadDocuments(files, context.Errors);
 
-                // Try load file into xml.
-                XmlDocument xmlDocument;
-                try { xmlDocument = LoadFromFile(file); }
-                catch (Exception e)
-                {
-                    context.Errors.Add(new BuildError {Message = $"Could not load file. {e.Message}", Target = file});
-                    continue;
-                }
-
-                documents[file] = xmlDocument;
-            }
-
-            // Extract all behaviour node tags.
+            // Extract all behaviour node tags from the xml documents.
             var nodeTypeTags = GetAllBehaviourNodeTagNames(documents.Values);
 
-            // Extract nodes from documents.
-            foreach (var kvp in documents)
-            {
-                // Early exit if there are critical errors.
-                if (context.Errors.Count(e => e.IsCritical) > 0)
-                {
-                    context.Success = false;
-                    return (output, context);
-                }
+            // Create parser nodes from xml documents.
+            var parserNodesMap = CreateParserNodes(documents, typeDefMap, context.Errors, nodeTypeTags);
+            if (parserNodesMap == null) { return (new List<Node>(), context); }
 
-                var file = kvp.Key;
-                var document = kvp.Value;
+            var parserNodes = parserNodesMap.Values.ToList();
 
-                // Extract nodes from document.
-                var fileNodes = Expand(file, document, typeDefMap, context.Errors, guids, nodeTypeTags);
-                parserNodes.AddRange(fileNodes);
-            }
+            // Determine underlying types.
+            if (!TryResolveTypes(parserNodes, typeDefMap, context.Errors)) { return (new List<Node>(), context); }
+
+            // Create function definitions.
+            var functionDefinitions = GetFunctionDefinitions(parserNodes, nodeTypeTags);
+            if (functionDefinitions == null) { return (new List<Node>(), context); }
+
+            // Compile scripted functions.
+            context.Compilation = YggCompiler.Compile<TState>(_config, functionDefinitions);
+            context.Errors.AddRange(context.Compilation.Errors);
+            if (context.Errors.Any(e => e.IsCritical)) { return (output, context); }
 
             // Instantiate nodes.
             foreach (var parserNode in parserNodes.Where(p => p.IsTopmost))
             {
-                // Early exit if there are critical errors.
-                if (context.Errors.Count(e => e.IsCritical) > 0)
-                {
-                    context.Success = false;
-                    return (output, context);
-                }
-
                 var node = parserNode.CreateInstance(manager, typeDefMap, context.Errors);
+                if (context.Errors.Any(e => e.IsCritical)) { return (output, context); }
+
                 if (node != null) { output.Add(node); }
             }
 
@@ -178,13 +148,12 @@ namespace Yggdrasil.Scripting
             return nodeTypes;
         }
 
-        private List<ParserNode> Expand(string file, XmlDocument document, Dictionary<string, ParserNode> typeDefMap, 
+        private void Expand(string file, XmlDocument document, Dictionary<string, ParserNode> typeDefMap,
             List<BuildError> errors, Dictionary<string, ParserNode> guids, HashSet<string> nodeTags)
         {
             var rootXml = document.SelectSingleNode("/__Main");
             var root = new ParserNode {Xml = rootXml, Tag = "__Main", File = file};
             var open = new Stack<ParserNode>();
-            var nodes = new List<ParserNode>();
 
             open.Push(root);
 
@@ -198,7 +167,7 @@ namespace Yggdrasil.Scripting
                 foreach (var xmlChild in GetChildren(next.Xml).ToList())
                 {
                     if (xmlChild.NodeType != XmlNodeType.Element) { continue; }
-                    
+
                     // Determine if the element is a behaviour node.
                     var tag = xmlChild.Name;
                     if (!nodeTags.Contains(tag)) { continue; }
@@ -214,7 +183,11 @@ namespace Yggdrasil.Scripting
                     if (string.IsNullOrWhiteSpace(guid)) { guid = GetRandomGuid(guids); }
                     else if (guids.TryGetValue(guid, out var prev))
                     {
-                        errors.Add(new BuildError {IsCritical = true, Message = $"Repeated node GUID: {guid}", Target = prev.File, SecondTarget = file});
+                        errors.Add(new BuildError
+                        {
+                            IsCritical = true, Message = $"Repeated node GUID: {guid}", Target = prev.File,
+                            SecondTarget = file
+                        });
                         continue;
                     }
 
@@ -226,18 +199,22 @@ namespace Yggdrasil.Scripting
                     // Check TypeDef repetitions.
                     if (!string.IsNullOrWhiteSpace(typeDef) && typeDefMap.TryGetValue(typeDef, out var prevTypeDef))
                     {
-                        errors.Add(new BuildError {IsCritical = true, Message = $"Repeated TypeDef identifier: {typeDef}", Target = prevTypeDef.File, SecondTarget = file});
+                        errors.Add(new BuildError
+                        {
+                            IsCritical = true, Message = $"Repeated TypeDef identifier: {typeDef}",
+                            Target = prevTypeDef.File, SecondTarget = file
+                        });
                         continue;
                     }
 
                     // Create the parser node.
                     var n = new ParserNode
                     {
-                        Xml = xmlChild, 
-                        Tag = tag, 
-                        File = file, 
-                        Guid = guid, 
-                        TypeDef = typeDef, 
+                        Xml = xmlChild,
+                        Tag = tag,
+                        File = file,
+                        Guid = guid,
+                        DeclaringTypeDef = typeDef,
                         IsTopmost = next == root
                     };
 
@@ -245,18 +222,17 @@ namespace Yggdrasil.Scripting
                     if (BaseNodeMap.TryGetValue(tag, out var type))
                     {
                         n.Type = type;
+                        n.IsDerivedFromTypeDef = false;
                     }
+                    else { n.IsDerivedFromTypeDef = true; }
 
                     guids[guid] = n;
                     if (!string.IsNullOrWhiteSpace(typeDef)) { typeDefMap[typeDef] = n; }
 
                     next.Children.Add(n);
-                    nodes.Add(n);
                     open.Push(n);
                 }
             }
-
-            return nodes;
         }
 
         private static string ConvertToXml(string path)
@@ -297,6 +273,7 @@ namespace Yggdrasil.Scripting
         {
             var guid = Guid.NewGuid().ToString().Replace("-", "");
             while (guids.ContainsKey(guid)) { guid = Guid.NewGuid().ToString().Replace("-", ""); }
+
             return guid;
         }
 
@@ -309,18 +286,148 @@ namespace Yggdrasil.Scripting
         {
             if (xml.Attributes == null) { yield break; }
 
-            foreach (var a in xml.Attributes)
-            {
-                yield return (XmlAttribute)a;
-            }
+            foreach (var a in xml.Attributes) { yield return (XmlAttribute) a; }
         }
 
         private static IEnumerable<XmlNode> GetChildren(XmlNode xml)
         {
-            foreach (var a in xml.ChildNodes)
+            foreach (var a in xml.ChildNodes) { yield return (XmlNode) a; }
+        }
+
+        private Dictionary<string, ParserNode> CreateParserNodes(Dictionary<string, XmlDocument> documents,
+            Dictionary<string, ParserNode> typeDefMap, List<BuildError> errors, HashSet<string> nodeTypeTags)
+        {
+            var parserNodes = new Dictionary<string, ParserNode>();
+
+            foreach (var kvp in documents)
             {
-                yield return (XmlNode)a;
+                var file = kvp.Key;
+                var document = kvp.Value;
+
+                // Extract nodes from document.
+                Expand(file, document, typeDefMap, errors, parserNodes, nodeTypeTags);
+
+                // Early exit if there are critical errors.
+                if (errors.Count(e => e.IsCritical) > 0) { return null; }
             }
+
+            return parserNodes;
+        }
+
+        private Dictionary<string, XmlDocument> LoadDocuments(string[] files, List<BuildError> errors)
+        {
+            var documents = new Dictionary<string, XmlDocument>();
+
+            foreach (var file in files)
+            {
+                // Check file exists.
+                if (!File.Exists(file))
+                {
+                    errors.Add(new BuildError {Message = "File does not exit.", Target = file});
+                    continue;
+                }
+
+                // Try load file into xml.
+                XmlDocument xmlDocument;
+                try { xmlDocument = LoadFromFile(file); }
+                catch (Exception e)
+                {
+                    errors.Add(new BuildError {Message = $"Could not load file. {e.Message}", Target = file});
+                    continue;
+                }
+
+                documents[file] = xmlDocument;
+            }
+
+            return documents;
+        }
+
+        private static bool TryResolveTypes(List<ParserNode> parserNodes, Dictionary<string, ParserNode> typeDefMap,
+            List<BuildError> errors)
+        {
+            var criticalError = false;
+
+            // Determine TypeDef for each node.
+            foreach (var node in parserNodes)
+            {
+                if (!node.IsDerivedFromTypeDef) { continue; }
+
+                if (typeDefMap.TryGetValue(node.Tag, out var typeDef)) { node.TypeDef = typeDef; }
+                else
+                {
+                    var error = new BuildError {Message = "Missing TypeDef."};
+                    error.Target = node.Tag;
+                    error.SecondTarget = node.File;
+                    error.IsCritical = true;
+                    criticalError = true;
+                }
+            }
+
+            // Return early on critical errors.
+            if (criticalError) { return false; }
+
+            // Resolve underlying types for all nodes derived from a TypeDef.
+            // One TypeDef can be derived from another TypeDef, which means we must resolve them with recursion (or loop).
+            var open = parserNodes
+                .Where(n => n.Type == null)
+                .ToList();
+
+            while (open.Count > 0)
+            {
+                var next = open.FirstOrDefault(n => n.TypeDef.Type != null);
+
+                if (next == null)
+                {
+                    var error = new BuildError {Message = "TypeDefs could not be resolved fully resolved."};
+                    error.Data.AddRange(open.Select(n => n.Tag));
+                    errors.Add(error);
+                    return false;
+                }
+
+                next.Type = next.TypeDef.Type;
+                open.Remove(next);
+            }
+
+            return true;
+        }
+
+        private static List<ScriptedFunctionDefinition> GetFunctionDefinitions(List<ParserNode> parserNodes, HashSet<string> nodeTypeTags)
+        {
+            var functionDefinitions = new List<ScriptedFunctionDefinition>();
+
+            foreach (var parserNode in parserNodes)
+            {
+                var attType = typeof(ScriptedFunctionAttribute);
+
+                var scriptedFunctionProperties = parserNode.Type
+                    .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                    .Where(prop => Attribute.IsDefined(prop, attType));
+
+                foreach (var property in scriptedFunctionProperties)
+                {
+                    var functionAttribute = GetAttribute(parserNode.Xml, property.Name);
+
+                    var functionElement = nodeTypeTags.Contains(property.Name) 
+                        ? null 
+                        : GetChildren(parserNode.Xml).FirstOrDefault(n => n.Name == property.Name);
+
+                    string functionText;
+                    if (functionAttribute != null) { functionText = functionAttribute.Value; }
+                    else if (functionElement != null) { functionText = functionElement.Value; }
+                    else { continue; }
+
+                    var definition = new ScriptedFunctionDefinition
+                    {
+                        Guid = parserNode.Guid,
+                        FunctionProperty = property,
+                        FunctionText = functionText
+                    };
+
+                    functionDefinitions.Add(definition);
+                }
+            }
+
+            return functionDefinitions;
         }
     }
 }

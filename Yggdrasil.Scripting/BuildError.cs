@@ -1,4 +1,6 @@
-﻿namespace Yggdrasil.Scripting
+﻿using System.Collections.Generic;
+
+namespace Yggdrasil.Scripting
 {
     public class BuildError
     {
@@ -6,5 +8,6 @@
         public string Message;
         public string Target;
         public string SecondTarget;
+        public List<string> Data = new List<string>();
     }
 }

@@ -12,17 +12,20 @@ namespace Yggdrasil.Scripting
         public string File;
         public string Tag;
         public string Guid;
-        public string TypeDef;
+        public string DeclaringTypeDef;
         public bool IsTopmost;
+        public bool IsDerivedFromTypeDef;
+        public ParserNode TypeDef;
         public XmlNode Xml;
         public Type Type;
         public List<ParserNode> Children = new List<ParserNode>();
+        public List<ScriptedFunctionDefinition> FunctionDefinitions = new List<ScriptedFunctionDefinition>();
 
         public Node CreateInstance(CoroutineManager manager, Dictionary<string, ParserNode> typeDefMap, List<BuildError> errors)
         {
-            return Type != null 
-                ? CreateStaticTypeInstance(manager, typeDefMap, errors) 
-                : CreateTypeDefInstance(manager, typeDefMap, errors);
+            return IsDerivedFromTypeDef 
+                ? CreateTypeDefInstance(manager, typeDefMap, errors) 
+                : CreateStaticTypeInstance(manager, typeDefMap, errors);
         }
 
         private Node CreateTypeDefInstance(CoroutineManager manager, Dictionary<string, ParserNode> typeDefMap, List<BuildError> errors)
