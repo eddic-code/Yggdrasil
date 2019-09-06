@@ -9,7 +9,7 @@ using Yggdrasil.Scripting;
 namespace Yggdrasil.Tests
 {
     [TestClass]
-    public class YggParserTests
+    public class ParserTests
     {
         [TestMethod]
         [DeploymentItem("ParserTests\\escapeCharacterTest.ygg")]
@@ -60,7 +60,7 @@ namespace Yggdrasil.Tests
 
         [TestMethod]
         [DeploymentItem("ParserTests\\testScript.ygg")]
-        public void ScriptBuildTest()
+        public void ScriptStructureTest()
         {
             var config = new YggParserConfig();
 
@@ -69,7 +69,7 @@ namespace Yggdrasil.Tests
 
             var manager = new CoroutineManager();
             var parser = new YggParser(config);
-            var (nodes, context) = parser.BuildFromFile(manager, "ParserTests\\testScript.ygg");
+            var (nodes, context) = parser.BuildFromFiles<TestState>(manager, "ParserTests\\testScript.ygg");
 
             Assert.IsTrue(context.Success);
             Assert.AreEqual(0, context.Errors.Count);

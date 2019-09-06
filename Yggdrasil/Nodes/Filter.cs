@@ -29,6 +29,7 @@
 
 using System;
 using System.Xml.Serialization;
+using Yggdrasil.Attributes;
 using Yggdrasil.Coroutines;
 using Yggdrasil.Enums;
 
@@ -55,6 +56,7 @@ namespace Yggdrasil.Nodes
         }
 
         [XmlIgnore]
+        [ScriptedFunction]
         public Func<object, bool> Conditional { get; set; } = DefaultConditional;
 
         protected override async Coroutine<Result> Tick()

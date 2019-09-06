@@ -29,7 +29,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -53,12 +52,15 @@ namespace Yggdrasil.Scripting
 
         private static readonly string[] _invalidFunctionCharacters = {"-", ";", ".", ",", " ", "\n", "\r"};
 
-        public static YggCompilation Compile<TState>(YggParserConfig config, IEnumerable<ScriptedFunctionDefinition> definitions)
+        public static YggCompilation Compile<TState>(YggParserConfig config, List<ScriptedFunctionDefinition> definitions)
         {
             var compilation = new YggCompilation();
             var builderClassText = new StringBuilder();
             var usings = new List<string>(config.ScriptUsings.Distinct().Select(s => $"using {s};\n"));
             var referencePaths = new HashSet<string>(config.ReferenceAssemblyPaths);
+
+            // Add dynamic using if necessary.
+            if (definitions.Any(d => d.ReplaceObjectWithDynamic)) { usings.Add("using System.Dynamic;"); }
 
             foreach (var u in usings) { builderClassText.Append(u); }
             builderClassText.Append("public class FunctionBuilder\n{");
@@ -66,7 +68,9 @@ namespace Yggdrasil.Scripting
             foreach (var definition in definitions)
             {
                 var sf = CreateScriptedFunction<TState>(definition.Guid, definition.FunctionProperty,
-                    definition.FunctionText);
+                    definition.FunctionText, definition.ReplaceObjectWithDynamic, compilation.Errors);
+
+                if (sf == null) { continue; }
 
                 if (!compilation.FunctionMap.TryGetValue(sf.Guid, out var functions))
                 {
@@ -119,7 +123,8 @@ namespace Yggdrasil.Scripting
             return compilation;
         }
 
-        private static ScriptedFunction CreateScriptedFunction<TState>(string guid, PropertyInfo property, string functionText)
+        private static ScriptedFunction CreateScriptedFunction<TState>(string guid, PropertyInfo property, 
+            string functionText, bool replaceObjectWithDynamic, List<BuildError> errors)
         {
             var propertyName = property.Name;
             var builderName = GetFunctionName("B", guid, propertyName);
@@ -138,7 +143,24 @@ namespace Yggdrasil.Scripting
             var secondGenericName = secondGenericType?.FullName?.Replace("+", ".");
             var isSameType = firstGenericType == stateType;
 
+            if (!_supportedScriptedFunctionTypes.Contains(functionType)
+                && !_supportedScriptedFunctionTypes.Contains(genericTypeDefinition))
+            {
+                var error = new BuildError();
+                error.Message = "Unsupported function type.";
+                error.Target = guid;
+                error.Data.Add($"Guid: {guid}");
+                error.Data.Add($"Declaring Type: {property.DeclaringType?.Name}");
+                error.Data.Add($"Property Type: {functionType.Name}");
+                error.Data.Add($"Generic Type Definition: {genericTypeDefinition.Name}");
+                error.Data.Add(functionText);
+
+                errors.Add(error);
+                return null;
+            }
+
             var sf = new ScriptedFunction();
+            sf.Guid = guid;
             sf.PropertyName = propertyName;
             sf.BuilderMethodName = builderName;
             sf.FunctionMethodName = functionName;
@@ -149,6 +171,15 @@ namespace Yggdrasil.Scripting
             sf.References.Add(stateType.GetTypeInfo().Assembly.Location);
             if (firstGenericType != null) { sf.References.Add(firstGenericType.GetTypeInfo().Assembly.Location); }
             if (secondGenericType != null) { sf.References.Add(secondGenericType.GetTypeInfo().Assembly.Location); }
+
+            if (replaceObjectWithDynamic)
+            {
+                sf.References.Add(typeof(RuntimeBinderException).GetTypeInfo().Assembly.Location);
+                sf.References.Add(typeof(DynamicAttribute).GetTypeInfo().Assembly.Location);
+
+                if (firstGenericName != null && firstGenericType == typeof(object)) { firstGenericName = "dynamic"; }
+                if (secondGenericName != null && secondGenericType == typeof(object)) { secondGenericName = "dynamic"; }
+            }
 
             // Action.
             if (functionType == typeof(Action))

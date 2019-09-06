@@ -80,8 +80,7 @@ namespace Yggdrasil.Scripting
             return document;
         }
 
-        public (List<Node> Nodes, BuildContext Context) BuildFromFiles<TState>(CoroutineManager manager,
-            params string[] files)
+        public (List<Node> Nodes, BuildContext Context) BuildFromFiles<TState>(CoroutineManager manager, params string[] files)
         {
             var context = new BuildContext();
             var output = new List<Node>();
@@ -110,6 +109,13 @@ namespace Yggdrasil.Scripting
             context.Compilation = YggCompiler.Compile<TState>(_config, functionDefinitions);
             context.Errors.AddRange(context.Compilation.Errors);
             if (context.Errors.Any(e => e.IsCritical)) { return (output, context); }
+
+            // Set scripted functions on parser nodes.
+            foreach (var parserNode in parserNodes)
+            {
+                if (!context.Compilation.FunctionMap.TryGetValue(parserNode.Guid, out var functions)) { continue; }
+                parserNode.ScriptedFunctions = functions;
+            }
 
             // Instantiate nodes.
             foreach (var parserNode in parserNodes.Where(p => p.IsTopmost))

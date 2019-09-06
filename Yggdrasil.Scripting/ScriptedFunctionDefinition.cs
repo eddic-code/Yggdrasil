@@ -7,5 +7,6 @@ namespace Yggdrasil.Scripting
         public string Guid;
         public PropertyInfo FunctionProperty;
         public string FunctionText;
+        public bool ReplaceObjectWithDynamic;
     }
 }

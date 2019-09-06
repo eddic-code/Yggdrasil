@@ -19,6 +19,7 @@ namespace Yggdrasil.Scripting
         public XmlNode Xml;
         public Type Type;
         public List<ParserNode> Children = new List<ParserNode>();
+        public List<ScriptedFunction> ScriptedFunctions = new List<ScriptedFunction>();
         public List<ScriptedFunctionDefinition> FunctionDefinitions = new List<ScriptedFunctionDefinition>();
 
         public Node CreateInstance(CoroutineManager manager, Dictionary<string, ParserNode> typeDefMap, List<BuildError> errors)
@@ -30,6 +31,7 @@ namespace Yggdrasil.Scripting
 
         private Node CreateTypeDefInstance(CoroutineManager manager, Dictionary<string, ParserNode> typeDefMap, List<BuildError> errors)
         {
+            // Find the TypeDef parser node.
             if (!typeDefMap.TryGetValue(Tag, out var parserDef))
             {
                 var error = new BuildError {Message = $"Could not find node type or TypeDef: {Tag}", Target = File, SecondTarget = Xml.Value};
@@ -37,11 +39,21 @@ namespace Yggdrasil.Scripting
                 return null;
             }
 
+            // Create an instance from the TypeDef parser node.
             var instance = parserDef.CreateInstance(manager, typeDefMap, errors);
             if (instance == null) { return null; }
 
+            // Set manager and guid.
+            instance.Manager = manager;
             instance.Guid = Guid;
 
+            // Set function values.
+            foreach (var function in ScriptedFunctions)
+            {
+                function.SetFunctionPropertyValue(instance);
+            }
+
+            // Instantiate the children.
             foreach (var parserChild in Children)
             {
                 var child = parserChild.CreateInstance(manager, typeDefMap, errors);
@@ -55,7 +67,9 @@ namespace Yggdrasil.Scripting
 
         private Node CreateStaticTypeInstance(CoroutineManager manager, Dictionary<string, ParserNode> typeDefMap, List<BuildError> errors)
         {
+            // Create an instance using reflection.
             Node instance;
+
             try
             {
                 var serializer = new XmlSerializer(Type);
@@ -75,9 +89,17 @@ namespace Yggdrasil.Scripting
                 return null;
             }
 
+            // Set manager and guid.
             instance.Manager = manager;
             instance.Guid = Guid;
 
+            // Set function values.
+            foreach (var function in ScriptedFunctions)
+            {
+                function.SetFunctionPropertyValue(instance);
+            }
+
+            // Instantiate the children.
             foreach (var parserChild in Children)
             {
                 var child = parserChild.CreateInstance(manager, typeDefMap, errors);
