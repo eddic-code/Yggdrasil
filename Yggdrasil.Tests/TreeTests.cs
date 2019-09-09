@@ -218,6 +218,7 @@ namespace Yggdrasil.Tests
             Assert.AreEqual(103, state.C);
             Assert.AreEqual(3, state.D);
             Assert.IsTrue(state.EventHappened);
+            Assert.AreEqual(1UL, manager.TickCount);
         }
 
         public class TestState

@@ -45,6 +45,7 @@ namespace Yggdrasil.Coroutines
         internal readonly Coroutine Yield;
         private CoroutineThread _activeThread;
         private int _activeThreadIndex;
+        private bool _initialized;
         private CoroutineThread _mainThread;
 
         private Node _root;
@@ -64,6 +65,7 @@ namespace Yggdrasil.Coroutines
             set
             {
                 _root = value;
+                _initialized = false;
                 _mainThread = new CoroutineThread(value, true, 0);
                 Reset();
             }
@@ -75,9 +77,28 @@ namespace Yggdrasil.Coroutines
 
         public event EventHandler<Node> NodeInactiveEventHandler;
 
+        public void Initialize()
+        {
+            var open = new Stack<Node>();
+            open.Push(Root);
+
+            while (open.Count > 0)
+            {
+                var next = open.Pop();
+                next.Initialize();
+
+                if (next.Children == null) { continue; }
+                foreach (var c in next.Children) { open.Push(c); }
+            }
+
+            _initialized = true;
+        }
+
         public void Update(object state = null)
         {
             if (Root == null) { return; }
+
+            if (!_initialized) { Initialize(); }
 
             CurrentInstance = this;
             State = state;

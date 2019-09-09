@@ -74,6 +74,8 @@ namespace Yggdrasil.Nodes
 
         public virtual void Terminate() { }
 
+        public virtual void Initialize() { }
+
         protected virtual void Start() { }
 
         protected virtual void Stop() { }

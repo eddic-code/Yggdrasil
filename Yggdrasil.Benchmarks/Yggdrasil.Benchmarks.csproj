@@ -14,4 +14,10 @@
     <ProjectReference Include="..\Yggdrasil\Yggdrasil.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="BenchmarkScripts\testScriptB.ygg">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

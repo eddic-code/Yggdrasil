@@ -52,6 +52,7 @@ namespace Yggdrasil.Benchmarks
             _managerA.Root = root;
             _stateA = new State {Entry = true, A = true, B = true, C = true, D = true, E = true};
 
+            _managerA.Initialize();
             while (_managerA.TickCount == 0) { _managerA.Update(_stateA); }
         }
 
@@ -70,6 +71,7 @@ namespace Yggdrasil.Benchmarks
 
             _stateB = new State {A = true, B = false, C = true, D = false};
 
+            _managerB.Initialize();
             while (_managerB.TickCount == 0) { _managerB.Update(_stateB); }
         }
 
@@ -78,6 +80,7 @@ namespace Yggdrasil.Benchmarks
             _managerC = new CoroutineManager();
             _managerC.Root = new GenericCoroutineTestNode(_managerC);
 
+            _managerC.Initialize();
             while (_managerC.TickCount == 0) { _managerC.Update(); }
         }
 
@@ -86,6 +89,7 @@ namespace Yggdrasil.Benchmarks
             _managerD = new CoroutineManager();
             _managerD.Root = new NestedCoroutineTestNode(_managerD);
 
+            _managerD.Initialize();
             while (_managerD.TickCount == 0) { _managerD.Update(); }
         }
 
@@ -103,6 +107,7 @@ namespace Yggdrasil.Benchmarks
 
             _stateE = new State {A = true, B = true, C = true};
 
+            _managerE.Initialize();
             while (_managerE.TickCount == 0) { _managerE.Update(_stateE); }
         }
 
@@ -124,6 +129,7 @@ namespace Yggdrasil.Benchmarks
             state.C = true;
             _dynamicStateA = state;
 
+            _managerF.Initialize();
             while (_managerF.TickCount == 0) { _managerF.Update(_dynamicStateA); }
         }
 

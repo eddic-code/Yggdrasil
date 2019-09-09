@@ -57,7 +57,7 @@ namespace Yggdrasil.Nodes
             foreach (var thread in _threads) { thread.Reset(); }
         }
 
-        protected override void Start()
+        public override void Initialize()
         {
             if (Children != null && Children.Count > 0 && _threads.Count <= 0)
             {
