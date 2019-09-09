@@ -7,7 +7,7 @@ using Yggdrasil.Nodes;
 
 namespace Yggdrasil.Scripting
 {
-    internal class ParserNode
+    public class ParserNode
     {
         public string File;
         public string Tag;
@@ -98,6 +98,8 @@ namespace Yggdrasil.Scripting
             {
                 function.SetFunctionPropertyValue(instance);
             }
+
+            if (instance.Children == null) { instance.Children = new List<Node>(); }
 
             // Instantiate the children.
             foreach (var parserChild in Children)

@@ -59,7 +59,7 @@ namespace Yggdrasil.Tests
         }
 
         [TestMethod]
-        [DeploymentItem("ParserTests\\testScript.ygg")]
+        [DeploymentItem("ParserTests\\testScriptA.ygg")]
         public void ScriptStructureTest()
         {
             var config = new YggParserConfig();
@@ -69,14 +69,13 @@ namespace Yggdrasil.Tests
 
             var manager = new CoroutineManager();
             var parser = new YggParser(config);
-            var (nodes, context) = parser.BuildFromFiles<TestState>(manager, "ParserTests\\testScript.ygg");
+            var context = parser.BuildFromFiles<TestState>("ParserTests\\testScriptA.ygg");
 
-            Assert.IsTrue(context.Success);
             Assert.AreEqual(0, context.Errors.Count);
-            Assert.AreEqual(4, nodes.Count);
+            Assert.AreEqual(4, context.TopmostNodeCount);
 
             // MyCustomTypeA
-            var nodeA = nodes[0];
+            var nodeA = context.Instantiate("A", manager);
             Assert.AreEqual("A", nodeA.Guid);
             Assert.AreEqual(typeof(Filter), nodeA.GetType());
             Assert.AreEqual(1, nodeA.Children.Count);
@@ -107,7 +106,7 @@ namespace Yggdrasil.Tests
             Assert.AreEqual(0, nodeF.Children.Count);
 
             // MyCustomTypeB
-            var nodeG = nodes[1];
+            var nodeG = context.Instantiate("G", manager);
             Assert.AreEqual("G", nodeG.Guid);
             Assert.AreEqual(typeof(Sequence), nodeG.GetType());
             Assert.AreEqual(2, nodeG.Children.Count);
@@ -123,7 +122,7 @@ namespace Yggdrasil.Tests
             CheckMyCustomTypeA(nodeI);
 
             // Third node.
-            var nodeJ = nodes[2];
+            var nodeJ = context.Instantiate("J", manager);
             Assert.AreEqual("J", nodeJ.Guid);
             Assert.AreEqual(typeof(Inverter), nodeJ.GetType());
             Assert.AreEqual(1, nodeJ.Children.Count);
@@ -134,7 +133,7 @@ namespace Yggdrasil.Tests
             CheckMyCustomTypeB(nodeK);
 
             // Parameterized node.
-            var nodeL = nodes[3];
+            var nodeL = context.Instantiate("L", manager);
             Assert.AreEqual("L", nodeL.Guid);
             Assert.AreEqual(typeof(ParameterizedTestNode), nodeL.GetType());
             Assert.AreEqual(7, nodeL.Children.Count);

@@ -101,7 +101,14 @@ namespace Yggdrasil.Scripting
             using (var output = new MemoryStream())
             {
                 var emitResult = comp.Emit(output);
-                if (!emitResult.Success) { throw new Exception(); }
+
+                if (!emitResult.Success)
+                {
+                    var error = new BuildError {Message = "Emit compilation error.", IsCritical = true};
+                    foreach (var diag in emitResult.Diagnostics) { error.CompilationDiagnostics.Add(diag); }
+                    compilation.Errors.Add(error);
+                    return compilation;
+                }
 
                 compiledAssembly = output.ToArray();
             }
@@ -193,9 +200,9 @@ namespace Yggdrasil.Scripting
             if (functionType.IsGenericType && genericTypeDefinition == typeof(Action<>))
             {
                 sf.ScriptText = isSameType
-                    ? $@"public static void {functionName}({firstGenericName} state) {{ {returnOpenText}{functionText}{returnCloseText} }} 
+                    ? $@"public static void {functionName}({firstGenericName} state) {{ {functionText}; }} 
                          public System.Action<{firstGenericName}> {builderName}() {{ return {functionName}; }} " 
-                    : $@"public static void {functionName}({firstGenericName} baseState) {{ var state = ({stateTypeName})baseState; {returnOpenText}{functionText}{returnCloseText} }} 
+                    : $@"public static void {functionName}({firstGenericName} baseState) {{ var state = ({stateTypeName})baseState; {functionText}; }} 
                          public System.Action<{firstGenericName}> {builderName}() {{ return {functionName}; }} ";
 
                 return sf;

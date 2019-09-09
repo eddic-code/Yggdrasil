@@ -41,9 +41,6 @@ namespace Yggdrasil.Nodes
         [XmlIgnore]
         private readonly List<CoroutineThread> _threads = new List<CoroutineThread>(10);
 
-        [XmlIgnore]
-        private List<Node> _children;
-
         public Interrupt(Func<object, bool> conditional)
         {
             Conditional = conditional;
@@ -52,32 +49,24 @@ namespace Yggdrasil.Nodes
         public Interrupt() { }
 
         [XmlIgnore]
-        public override List<Node> Children
-        {
-            get => _children;
-            set
-            {
-                _children = value;
-                _threads.Clear();
-
-                if (value != null && value.Count > 0)
-                {
-                    foreach (var n in value)
-                    {
-                        var thread = new CoroutineThread(n, false, 1);
-                        _threads.Add(thread);
-                    }
-                }
-            }
-        }
-
-        [XmlIgnore]
         [ScriptedFunction]
         public Func<object, bool> Conditional { get; set; } = DefaultConditional;
 
         public override void Terminate()
         {
             foreach (var thread in _threads) { thread.Reset(); }
+        }
+
+        protected override void Start()
+        {
+            if (Children != null && Children.Count > 0 && _threads.Count <= 0)
+            {
+                foreach (var n in Children)
+                {
+                    var thread = new CoroutineThread(n, false, 1);
+                    _threads.Add(thread);
+                }
+            }
         }
 
         protected override async Coroutine<Result> Tick()

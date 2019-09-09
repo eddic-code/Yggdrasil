@@ -80,54 +80,52 @@ namespace Yggdrasil.Scripting
             return document;
         }
 
-        public (List<Node> Nodes, BuildContext Context) BuildFromFiles<TState>(CoroutineManager manager, params string[] files)
+        public BuildContext BuildFromFiles<TState>(params string[] files)
         {
             var context = new BuildContext();
-            var output = new List<Node>();
-            var typeDefMap = new Dictionary<string, ParserNode>();
+            context.TypeDefMap = new Dictionary<string, ParserNode>();
 
             // Load all xml documents from files.
             var documents = LoadDocuments(files, context.Errors);
 
             // Extract all behaviour node tags from the xml documents.
-            var nodeTypeTags = GetAllBehaviourNodeTagNames(documents.Values);
+            context.NodeTypeTags = GetAllBehaviourNodeTagNames(documents.Values);
 
             // Create parser nodes from xml documents.
-            var parserNodesMap = CreateParserNodes(documents, typeDefMap, context.Errors, nodeTypeTags);
-            if (parserNodesMap == null) { return (new List<Node>(), context); }
+            var parserNodesMap = CreateParserNodes(documents, context.TypeDefMap, context.Errors, context.NodeTypeTags);
+            if (parserNodesMap == null) { return context; }
 
-            var parserNodes = parserNodesMap.Values.ToList();
+            context.ParserNodes = parserNodesMap.Values.ToList();
 
             // Determine underlying types.
-            if (!TryResolveTypes(parserNodes, typeDefMap, context.Errors)) { return (new List<Node>(), context); }
+            if (!TryResolveTypes(context.ParserNodes, context.TypeDefMap, context.Errors)) { return context; }
 
             // Create function definitions.
-            var functionDefinitions = GetFunctionDefinitions(parserNodes, nodeTypeTags);
-            if (functionDefinitions == null) { return (new List<Node>(), context); }
+            var functionDefinitions = GetFunctionDefinitions(context.ParserNodes, context.NodeTypeTags);
+            if (functionDefinitions == null) { return context; }
 
             // Compile scripted functions.
             context.Compilation = YggCompiler.Compile<TState>(_config, functionDefinitions);
             context.Errors.AddRange(context.Compilation.Errors);
-            if (context.Errors.Any(e => e.IsCritical)) { return (output, context); }
+            if (context.Errors.Any(e => e.IsCritical)) { return context; }
 
             // Set scripted functions on parser nodes.
-            foreach (var parserNode in parserNodes)
+            foreach (var parserNode in context.ParserNodes)
             {
                 if (!context.Compilation.FunctionMap.TryGetValue(parserNode.Guid, out var functions)) { continue; }
                 parserNode.ScriptedFunctions = functions;
             }
 
-            // Instantiate nodes.
-            foreach (var parserNode in parserNodes.Where(p => p.IsTopmost))
+            // Instantiate nodes once to test them.
+            foreach (var parserNode in context.ParserNodes.Where(p => p.IsTopmost))
             {
-                var node = parserNode.CreateInstance(manager, typeDefMap, context.Errors);
-                if (context.Errors.Any(e => e.IsCritical)) { return (output, context); }
+                var node = parserNode.CreateInstance(null, context.TypeDefMap, context.Errors);
+                if (context.Errors.Any(e => e.IsCritical)) { return context; }
 
-                if (node != null) { output.Add(node); }
+                if (node != null) { context.TopmostNodeCount += 1; }
             }
 
-            context.Success = context.Errors.Count == 0;
-            return (output, context);
+            return context;
         }
 
         private HashSet<string> GetAllBehaviourNodeTagNames(IEnumerable<XmlDocument> documents)
