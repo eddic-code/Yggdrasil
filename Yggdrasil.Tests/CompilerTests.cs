@@ -47,8 +47,9 @@ namespace Yggdrasil.Tests
             var dD = new ScriptedFunctionDefinition{Guid = Guid.NewGuid().ToString().Replace("-", ""), FunctionProperty = propertySingle, 
                 FunctionText = textD, ReplaceObjectWithDynamic = true};
 
+            var compiler = new YggCompiler();
             var definitions = new List<ScriptedFunctionDefinition> {dA, dB, dC, dD};
-            var compilation = YggCompiler.Compile<object>(config, definitions);
+            var compilation = compiler.Compile<object>(config.ScriptUsings, config.ReferenceAssemblyPaths, definitions);
 
             Assert.AreEqual(0, compilation.Errors.Count);
             Assert.AreEqual(4, compilation.FunctionMap.Count);
@@ -118,8 +119,9 @@ namespace Yggdrasil.Tests
             var dB = new ScriptedFunctionDefinition{Guid = Guid.NewGuid().ToString().Replace("-", ""), FunctionProperty = property, FunctionText = textB};
             var dC = new ScriptedFunctionDefinition{Guid = Guid.NewGuid().ToString().Replace("-", ""), FunctionProperty = property, FunctionText = textC};
 
+            var compiler = new YggCompiler();
             var definitions = new List<ScriptedFunctionDefinition> {dA, dB, dC};
-            var compilation = YggCompiler.Compile<TestState>(config, definitions);
+            var compilation = compiler.Compile<TestState>(config.ScriptUsings, config.ReferenceAssemblyPaths, definitions);
 
             Assert.AreEqual(0, compilation.Errors.Count);
             Assert.AreEqual(3, compilation.FunctionMap.Count);

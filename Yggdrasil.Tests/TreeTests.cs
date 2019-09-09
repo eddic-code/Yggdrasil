@@ -21,8 +21,9 @@ namespace Yggdrasil.Tests
             config.NodeTypeAssemblies.Add(typeof(Node).Assembly.GetName().Name);
             config.NodeTypeAssemblies.Add(typeof(TestRunningAction).Assembly.GetName().Name);
 
+            var compiler = new YggCompiler();
             var manager = new CoroutineManager();
-            var parser = new YggParser(config);
+            var parser = new YggParser(config, compiler);
             var context = parser.BuildFromFiles<TestState>("ParserTests\\testScriptB.ygg");
 
             Assert.AreEqual(0, context.Errors.Count);

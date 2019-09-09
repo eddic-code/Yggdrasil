@@ -15,7 +15,7 @@ namespace Yggdrasil.Tests
         [DeploymentItem("ParserTests\\escapeCharacterTest.ygg")]
         public void EscapeCharacterTest()
         {
-            var parser = new YggParser();
+            var parser = new YggParser(null, new YggCompiler());
             var document = parser.LoadFromFile("ParserTests\\escapeCharacterTest.ygg");
             
             const string innerTextA = @"state.A >= state.B || state.C <= state.D";
@@ -67,8 +67,9 @@ namespace Yggdrasil.Tests
             config.NodeTypeAssemblies.Add(typeof(Node).Assembly.GetName().Name);
             config.NodeTypeAssemblies.Add(typeof(ParameterizedTestNode).Assembly.GetName().Name);
 
+            var compiler = new YggCompiler();
             var manager = new CoroutineManager();
-            var parser = new YggParser(config);
+            var parser = new YggParser(config, compiler);
             var context = parser.BuildFromFiles<TestState>("ParserTests\\testScriptA.ygg");
 
             Assert.AreEqual(0, context.Errors.Count);

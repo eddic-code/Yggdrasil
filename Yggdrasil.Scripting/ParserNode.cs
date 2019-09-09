@@ -34,8 +34,7 @@ namespace Yggdrasil.Scripting
             // Find the TypeDef parser node.
             if (!typeDefMap.TryGetValue(Tag, out var parserDef))
             {
-                var error = new BuildError {Message = $"Could not find node type or TypeDef: {Tag}", Target = File, SecondTarget = Xml.Value};
-                errors.Add(error);
+                errors.Add(ParserErrorHelper.MissingTypeDefInstance(Tag, File));
                 return null;
             }
 
@@ -77,15 +76,13 @@ namespace Yggdrasil.Scripting
             }
             catch (Exception e)
             {
-                var error = new BuildError {Message = $"Could not instantiate node of type {Tag}. {e.Message}", Target = File, SecondTarget = Xml.Value};
-                errors.Add(error);
+                errors.Add(ParserErrorHelper.UnableToInstantiate(Tag, File, e.Message));
                 return null;
             }
 
             if (instance == null)
             {
-                var error = new BuildError {Message = $"Could not cast {Tag} into {nameof(Node)}.", Target = File, SecondTarget = Xml.Value};
-                errors.Add(error);
+                errors.Add(ParserErrorHelper.CannotCastToNode(Tag, File));
                 return null;
             }
 

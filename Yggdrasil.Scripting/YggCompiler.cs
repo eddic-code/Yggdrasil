@@ -42,7 +42,7 @@ using Microsoft.CSharp.RuntimeBinder;
 
 namespace Yggdrasil.Scripting
 {
-    public class YggCompiler
+    public class YggCompiler : IScriptCompiler
     {
         private static readonly Regex _returnStatement =
             new Regex("return[\\s\n\r]+.+[\\s\n\r]*;", RegexOptions.Compiled);
@@ -52,12 +52,13 @@ namespace Yggdrasil.Scripting
 
         private static readonly string[] _invalidFunctionCharacters = {"-", ";", ".", ",", " ", "\n", "\r"};
 
-        public static YggCompilation Compile<TState>(YggParserConfig config, List<ScriptedFunctionDefinition> definitions)
+        public YggCompilation Compile<TState>(IEnumerable<string> namespaces, IEnumerable<string> referenceAssemblyPaths, 
+            List<ScriptedFunctionDefinition> definitions)
         {
             var compilation = new YggCompilation();
             var builderClassText = new StringBuilder();
-            var usings = new List<string>(config.ScriptUsings.Distinct().Select(s => $"using {s};\n"));
-            var referencePaths = new HashSet<string>(config.ReferenceAssemblyPaths);
+            var usings = new List<string>(namespaces.Distinct().Select(s => $"using {s};\n"));
+            var referencePaths = new HashSet<string>(referenceAssemblyPaths);
 
             // Add dynamic using if necessary.
             if (definitions.Any(d => d.ReplaceObjectWithDynamic)) { usings.Add("using System.Dynamic;"); }
@@ -105,7 +106,7 @@ namespace Yggdrasil.Scripting
                 if (!emitResult.Success)
                 {
                     var error = new BuildError {Message = "Emit compilation error.", IsCritical = true};
-                    foreach (var diag in emitResult.Diagnostics) { error.CompilationDiagnostics.Add(diag); }
+                    foreach (var diag in emitResult.Diagnostics) { error.Diagnostics.Add(diag); }
                     compilation.Errors.Add(error);
                     return compilation;
                 }
@@ -124,8 +125,6 @@ namespace Yggdrasil.Scripting
             }
 
             compilation.Builder = builder;
-            compilation.Usings = usings;
-            compilation.References = referencePaths.ToList();
 
             return compilation;
         }
@@ -153,14 +152,8 @@ namespace Yggdrasil.Scripting
             if (!_supportedScriptedFunctionTypes.Contains(functionType)
                 && !_supportedScriptedFunctionTypes.Contains(genericTypeDefinition))
             {
-                var error = new BuildError();
-                error.Message = "Unsupported function type.";
-                error.Target = guid;
-                error.Data.Add($"Guid: {guid}");
-                error.Data.Add($"Declaring Type: {property.DeclaringType?.Name}");
-                error.Data.Add($"Property Type: {functionType.Name}");
-                error.Data.Add($"Generic Type Definition: {genericTypeDefinition.Name}");
-                error.Data.Add(functionText);
+                var error = ParserErrorHelper.UnsupportedScriptFunctionType(guid, property.DeclaringType?.Name,
+                    functionType.Name, genericTypeDefinition.Name, functionText);
 
                 errors.Add(error);
                 return null;

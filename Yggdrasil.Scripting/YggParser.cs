@@ -35,7 +35,6 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Xml;
 using Yggdrasil.Attributes;
-using Yggdrasil.Coroutines;
 using Yggdrasil.Nodes;
 
 namespace Yggdrasil.Scripting
@@ -54,10 +53,12 @@ namespace Yggdrasil.Scripting
         private static readonly Regex _attributeClosing = new Regex("[\\s\n\r]*`", RegexOptions.Compiled);
 
         private readonly YggParserConfig _config;
+        private readonly IScriptCompiler _compiler;
 
-        public YggParser(YggParserConfig config = null)
+        public YggParser(YggParserConfig config, IScriptCompiler compiler)
         {
             _config = config ?? new YggParserConfig();
+            _compiler = compiler;
 
             BaseNodeMap = AppDomain.CurrentDomain.GetAssemblies()
                 .Where(a => _config.NodeTypeAssemblies.Contains(a.GetName().Name))
@@ -105,7 +106,7 @@ namespace Yggdrasil.Scripting
             if (functionDefinitions == null) { return context; }
 
             // Compile scripted functions.
-            context.Compilation = YggCompiler.Compile<TState>(_config, functionDefinitions);
+            context.Compilation = _compiler.Compile<TState>(_config.ScriptUsings, _config.ReferenceAssemblyPaths, functionDefinitions);
             context.Errors.AddRange(context.Compilation.Errors);
             if (context.Errors.Any(e => e.IsCritical)) { return context; }
 
@@ -187,12 +188,8 @@ namespace Yggdrasil.Scripting
                     if (string.IsNullOrWhiteSpace(guid)) { guid = GetRandomGuid(guids); }
                     else if (guids.TryGetValue(guid, out var prev))
                     {
-                        errors.Add(new BuildError
-                        {
-                            IsCritical = true, Message = $"Repeated node GUID: {guid}", Target = prev.File,
-                            SecondTarget = file
-                        });
-                        continue;
+                        errors.Add(ParserErrorHelper.RepeatedNodeGuid(guid, file, prev.File));
+                        return;
                     }
 
                     // Search for a type definition attribute on the node. Remove typedef attribute from the xml.
@@ -203,12 +200,8 @@ namespace Yggdrasil.Scripting
                     // Check TypeDef repetitions.
                     if (!string.IsNullOrWhiteSpace(typeDef) && typeDefMap.TryGetValue(typeDef, out var prevTypeDef))
                     {
-                        errors.Add(new BuildError
-                        {
-                            IsCritical = true, Message = $"Repeated TypeDef identifier: {typeDef}",
-                            Target = prevTypeDef.File, SecondTarget = file
-                        });
-                        continue;
+                        errors.Add(ParserErrorHelper.RepeatedTypeDef(typeDef, file, prevTypeDef.File));
+                        return;
                     }
 
                     // Create the parser node.
@@ -327,7 +320,7 @@ namespace Yggdrasil.Scripting
                 // Check file exists.
                 if (!File.Exists(file))
                 {
-                    errors.Add(new BuildError {Message = "File does not exit.", Target = file});
+                    errors.Add(ParserErrorHelper.FileMissing(file));
                     continue;
                 }
 
@@ -336,7 +329,7 @@ namespace Yggdrasil.Scripting
                 try { xmlDocument = LoadFromFile(file); }
                 catch (Exception e)
                 {
-                    errors.Add(new BuildError {Message = $"Could not load file. {e.Message}", Target = file});
+                    errors.Add(ParserErrorHelper.FileLoad(file, e.Message));
                     continue;
                 }
 
@@ -359,10 +352,7 @@ namespace Yggdrasil.Scripting
                 if (typeDefMap.TryGetValue(node.Tag, out var typeDef)) { node.TypeDef = typeDef; }
                 else
                 {
-                    var error = new BuildError {Message = "Missing TypeDef."};
-                    error.Target = node.Tag;
-                    error.SecondTarget = node.File;
-                    error.IsCritical = true;
+                    errors.Add(ParserErrorHelper.MissingTypeDef(node.Tag, node.File));
                     criticalError = true;
                 }
             }
@@ -382,9 +372,7 @@ namespace Yggdrasil.Scripting
 
                 if (next == null)
                 {
-                    var error = new BuildError {Message = "TypeDefs could not be resolved fully resolved."};
-                    error.Data.AddRange(open.Select(n => n.Tag));
-                    errors.Add(error);
+                    errors.Add(ParserErrorHelper.TypeDefsUnresolved(open.Select(n => n.Tag)));
                     return false;
                 }
 
