@@ -67,7 +67,7 @@ namespace Yggdrasil.Benchmarks
 
             [XmlIgnore]
             [ScriptedFunction]
-            public Action<object> Function { get; set; }
+            public Action<object> Function { get; set; } = DefaultFunction;
 
             [XmlAttribute]
             public int Yields { get; set; }
@@ -76,11 +76,16 @@ namespace Yggdrasil.Benchmarks
             {
                 for (var i = 0; i < Yields; i++)
                 {
-                    Function?.Invoke(State);
+                    Function(State);
                     await Yield;
                 }
 
                 return Output;
+            }
+
+            private static void DefaultFunction(object state)
+            {
+
             }
         }
     }

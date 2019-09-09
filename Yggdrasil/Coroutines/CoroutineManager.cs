@@ -52,7 +52,7 @@ namespace Yggdrasil.Coroutines
 
         public CoroutineManager()
         {
-            Yield = new Coroutine();
+            Yield = Coroutine.CreateConst(false);
         }
 
         public ulong TickCount => _mainThread?.TickCount ?? 0;

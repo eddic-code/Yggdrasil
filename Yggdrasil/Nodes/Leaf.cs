@@ -13,13 +13,18 @@ namespace Yggdrasil.Nodes
 
         [XmlIgnore]
         [ScriptedFunction]
-        public Action<object> Function { get; set; }
+        public Action<object> Function { get; set; } = DefaultFunction;
 
         protected override Coroutine<Result> Tick()
         {
-            Function?.Invoke(State);
+            Function(State);
 
             return Output == Result.Success ? Success : Failure;
+        }
+
+        private static void DefaultFunction(object state)
+        {
+
         }
     }
 }

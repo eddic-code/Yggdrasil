@@ -108,7 +108,11 @@ namespace Yggdrasil.Coroutines
             Result = Result.Unknown;
 
             _active.Clear();
+
+            foreach (var cont in _continuations) { cont.Discard(); }
             _continuations.Clear();
+
+            foreach (var cont in _continuationsBuffer) { cont.Discard(); }
             _continuationsBuffer.Clear();
 
             InputDependencies.Clear();

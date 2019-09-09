@@ -36,6 +36,9 @@ namespace Yggdrasil.Tests
 
             manager.Root = root;
             AssertScriptB(manager);
+
+            manager.Reset();
+            AssertScriptB(manager);
         }
 
         [TestMethod]

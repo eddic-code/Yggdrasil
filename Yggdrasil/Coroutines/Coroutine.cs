@@ -38,6 +38,7 @@ namespace Yggdrasil.Coroutines
     {
         private static readonly ConcurrentPool<Coroutine<T>> _pool = new ConcurrentPool<Coroutine<T>>();
 
+        private bool _isConstant;
         private IStateMachineWrapper _stateMachine;
         private T _result;
 
@@ -50,6 +51,19 @@ namespace Yggdrasil.Coroutines
             _stateMachine.MoveNext();
         }
 
+        public void Discard()
+        {
+            if (_isConstant) { return; }
+
+            _result = default;
+            IsCompleted = false;
+
+            if (_stateMachine != null) { SmPool.Recycle(_stateMachine); }
+            _stateMachine = null;
+
+            _pool.Recycle(this);
+        }
+
         public void OnCompleted(Action continuation) { }
 
         public void UnsafeOnCompleted(Action continuation) { }
@@ -59,12 +73,13 @@ namespace Yggdrasil.Coroutines
             return _pool.Get();
         }
 
-        public static Coroutine<T> CreateWith(T result)
+        public static Coroutine<T> CreateConst(T result)
         {
             var coroutine = _pool.Get();
 
             coroutine._result = result;
             coroutine.IsCompleted = true;
+            coroutine._isConstant = true;
 
             return coroutine;
         }
@@ -76,6 +91,8 @@ namespace Yggdrasil.Coroutines
 
         public T GetResult()
         {
+            if (_isConstant) { return _result; }
+
             var result = _result;
 
             _result = default;
@@ -135,6 +152,7 @@ namespace Yggdrasil.Coroutines
     {
         private static readonly ConcurrentPool<Coroutine> _pool = new ConcurrentPool<Coroutine>();
 
+        private bool _isConstant;
         private IStateMachineWrapper _stateMachine;
 
         public Coroutine Task => this;
@@ -146,6 +164,18 @@ namespace Yggdrasil.Coroutines
             _stateMachine.MoveNext();
         }
 
+        public void Discard()
+        {
+            if (_isConstant) { return; }
+
+            IsCompleted = false;
+
+            if (_stateMachine != null) { SmPool.Recycle(_stateMachine); }
+            _stateMachine = null;
+
+            _pool.Recycle(this);
+        }
+
         public void OnCompleted(Action continuation) { }
 
         public void UnsafeOnCompleted(Action continuation) { }
@@ -155,6 +185,16 @@ namespace Yggdrasil.Coroutines
             return _pool.Get();
         }
 
+        public static Coroutine CreateConst(bool isCompleted)
+        {
+            var coroutine = _pool.Get();
+
+            coroutine.IsCompleted = isCompleted;
+            coroutine._isConstant = true;
+
+            return coroutine;
+        }
+
         public Coroutine GetAwaiter()
         {
             return this;
@@ -162,12 +202,10 @@ namespace Yggdrasil.Coroutines
 
         public object GetResult()
         {
-            if (CoroutineManager.CurrentInstance.Yield != this)
-            {
-                IsCompleted = false;
+            if (_isConstant) { return null; }
 
-                _pool.Recycle(this);
-            }
+            IsCompleted = false;
+            _pool.Recycle(this);
 
             return null;
         }
@@ -175,6 +213,8 @@ namespace Yggdrasil.Coroutines
         // This is never called for a lowermost instanced Coroutine, like the CoroutineManager's Yield.
         public void SetResult()
         {
+            if (_isConstant) { return; }
+
             IsCompleted = true;
 
             if (_stateMachine != null) { SmPool.Recycle(_stateMachine); }
