@@ -52,14 +52,7 @@ namespace Yggdrasil.Scripting
                 function.SetFunctionPropertyValue(instance);
             }
 
-            // Instantiate the children.
-            foreach (var parserChild in Children)
-            {
-                var child = parserChild.CreateInstance(manager, typeDefMap, errors);
-                if (child == null) { continue; }
-
-                instance.Children.Add(child);
-            }
+            if (instance.Children == null) { instance.Children = new List<Node>(); }
 
             return instance;
         }
@@ -97,15 +90,6 @@ namespace Yggdrasil.Scripting
             }
 
             if (instance.Children == null) { instance.Children = new List<Node>(); }
-
-            // Instantiate the children.
-            foreach (var parserChild in Children)
-            {
-                var child = parserChild.CreateInstance(manager, typeDefMap, errors);
-                if (child == null) { continue; }
-
-                instance.Children.Add(child);
-            }
 
             return instance;
         }

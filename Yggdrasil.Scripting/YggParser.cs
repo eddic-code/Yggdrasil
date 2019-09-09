@@ -106,14 +106,14 @@ namespace Yggdrasil.Scripting
             if (functionDefinitions == null) { return context; }
 
             // Compile scripted functions.
-            context.Compilation = _compiler.Compile<TState>(_config.ScriptUsings, _config.ReferenceAssemblyPaths, functionDefinitions);
+            context.Compilation = _compiler.Compile<TState>(_config.ScriptNamespaces, _config.ReferenceAssemblyPaths, functionDefinitions);
             context.Errors.AddRange(context.Compilation.Errors);
             if (context.Errors.Any(e => e.IsCritical)) { return context; }
 
             // Set scripted functions on parser nodes.
             foreach (var parserNode in context.ParserNodes)
             {
-                if (!context.Compilation.FunctionMap.TryGetValue(parserNode.Guid, out var functions)) { continue; }
+                if (!context.Compilation.GuidFunctionMap.TryGetValue(parserNode.Guid, out var functions)) { continue; }
                 parserNode.ScriptedFunctions = functions;
             }
 
@@ -383,7 +383,7 @@ namespace Yggdrasil.Scripting
             return true;
         }
 
-        private static List<ScriptedFunctionDefinition> GetFunctionDefinitions(List<ParserNode> parserNodes, HashSet<string> nodeTypeTags)
+        private List<ScriptedFunctionDefinition> GetFunctionDefinitions(List<ParserNode> parserNodes, HashSet<string> nodeTypeTags)
         {
             var functionDefinitions = new List<ScriptedFunctionDefinition>();
 
@@ -412,7 +412,8 @@ namespace Yggdrasil.Scripting
                     {
                         Guid = parserNode.Guid,
                         FunctionProperty = property,
-                        FunctionText = functionText
+                        FunctionText = functionText,
+                        ReplaceObjectWithDynamic = _config.ReplaceObjectStateWithDynamic
                     };
 
                     functionDefinitions.Add(definition);

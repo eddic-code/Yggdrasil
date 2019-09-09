@@ -21,6 +21,17 @@ namespace Yggdrasil.Scripting
             return error;
         }
 
+        public static BuildError CannotLoadReference(string exception)
+        {
+            var error = new BuildError();
+
+            error.IsCritical = true;
+            error.Message = "Could not load reference assembly.";
+            error.Data.Add(exception);
+
+            return error;
+        }
+
         public static BuildError CannotCastToNode(string type, string file)
         {
             var error = new BuildError();

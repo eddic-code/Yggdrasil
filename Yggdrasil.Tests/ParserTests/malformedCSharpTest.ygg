@@ -1,0 +1,22 @@
+<Parallel Guid="root">
+  <MySequenceA/>
+  <Interrupt Conditional=`state.EventHappened == false`>
+    <MySequenceB/>
+  </Interrupt>
+</Parallel>
+
+<Sequence TypeDef="MySequenceA">
+  <TestRunningAction Output="Success" Yields="3" Function=`state.A += 1`/>
+  <Inverter>
+    <Leaf Output="Failure" Function=`state.B = state.A - 2`/>
+  </Inverter>
+  <TestRunningAction Output="Success" Yields="1" Function=`state.D === state.A`/>
+  <Filter Conditional=`state.A == 3`>
+    <Leaf Output="Success" Function=`state.EventHappened = true`/>
+  </Filter>
+</Sequence>
+
+<Sequence TypeDef="MySequenceB">
+  <TestRunningAction Output="Success" Yields="3" Function=`state.C <>= state.A + 1`/>
+  <TestRunningAction Output="Success" Yields="100" Function=`state.C = state.A + 100`/>
+</Sequence>

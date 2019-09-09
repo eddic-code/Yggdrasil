@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Dynamic;
+using System.Linq;
 using System.Xml.Serialization;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Yggdrasil.Attributes;
@@ -32,8 +34,139 @@ namespace Yggdrasil.Tests
             var root = context.Instantiate("root", manager);
             Assert.IsNotNull(root);
 
-            var state = new TestState();
             manager.Root = root;
+            AssertScriptB(manager);
+        }
+
+        [TestMethod]
+        [DeploymentItem("ParserTests\\testScriptB.ygg")]
+        public void RepeatedParsingTest()
+        {
+            var config = new YggParserConfig();
+
+            config.NodeTypeAssemblies.Add(typeof(Node).Assembly.GetName().Name);
+            config.NodeTypeAssemblies.Add(typeof(TestRunningAction).Assembly.GetName().Name);
+
+            var compiler = new YggCompiler();
+            var manager = new CoroutineManager();
+            var parser = new YggParser(config, compiler);
+
+            for (var i = 0; i < 5; i++)
+            {
+                var context = parser.BuildFromFiles<TestState>("ParserTests\\testScriptB.ygg");
+
+                Assert.AreEqual(0, context.Errors.Count);
+                Assert.AreEqual(3, context.TopmostNodeCount);
+
+                var root = context.Instantiate("root", manager);
+                Assert.IsNotNull(root);
+
+                manager.Root = root;
+                AssertScriptB(manager);
+            }
+        }
+
+        [TestMethod]
+        [DeploymentItem("ParserTests\\repeatedGuidTest.ygg")]
+        public void RepeatedGuidsTest()
+        {
+            var config = new YggParserConfig();
+
+            config.NodeTypeAssemblies.Add(typeof(Node).Assembly.GetName().Name);
+            config.NodeTypeAssemblies.Add(typeof(TestRunningAction).Assembly.GetName().Name);
+
+            var compiler = new YggCompiler();
+            var parser = new YggParser(config, compiler);
+            var context = parser.BuildFromFiles<TestState>("ParserTests\\repeatedGuidTest.ygg");
+
+            Assert.IsTrue(context.Errors.Count > 0);
+        }
+
+        [TestMethod]
+        [DeploymentItem("ParserTests\\repeatedTypeDefTest.ygg")]
+        public void RepeatedTypeDefTest()
+        {
+            var config = new YggParserConfig();
+
+            config.NodeTypeAssemblies.Add(typeof(Node).Assembly.GetName().Name);
+            config.NodeTypeAssemblies.Add(typeof(TestRunningAction).Assembly.GetName().Name);
+
+            var compiler = new YggCompiler();
+            var parser = new YggParser(config, compiler);
+            var context = parser.BuildFromFiles<TestState>("ParserTests\\repeatedTypeDefTest.ygg");
+
+            Assert.IsTrue(context.Errors.Count > 0);
+        }
+
+        [TestMethod]
+        [DeploymentItem("ParserTests\\malformedCSharpTest.ygg")]
+        public void MalformedCSharpTest()
+        {
+            var config = new YggParserConfig();
+
+            config.NodeTypeAssemblies.Add(typeof(Node).Assembly.GetName().Name);
+            config.NodeTypeAssemblies.Add(typeof(TestRunningAction).Assembly.GetName().Name);
+
+            var compiler = new YggCompiler();
+            var parser = new YggParser(config, compiler);
+            var context = parser.BuildFromFiles<TestState>("ParserTests\\malformedCSharpTest.ygg");
+
+            Assert.IsTrue(context.Errors.Count > 0);
+            Assert.IsTrue(context.Errors.Any(e => e.Diagnostics.Count > 0));
+        }
+
+        [TestMethod]
+        [DeploymentItem("ParserTests\\malformedXmlTest.ygg")]
+        public void MalformedXmlTest()
+        {
+            var config = new YggParserConfig();
+
+            config.NodeTypeAssemblies.Add(typeof(Node).Assembly.GetName().Name);
+            config.NodeTypeAssemblies.Add(typeof(TestRunningAction).Assembly.GetName().Name);
+
+            var compiler = new YggCompiler();
+            var parser = new YggParser(config, compiler);
+            var context = parser.BuildFromFiles<TestState>("ParserTests\\malformedXmlTest.ygg");
+
+            Assert.IsTrue(context.Errors.Count > 0);
+        }
+
+        [TestMethod]
+        [DeploymentItem("ParserTests\\testScriptC.ygg")]
+        public void DynamicTestScript()
+        {
+            var config = new YggParserConfig();
+
+            config.ReplaceObjectStateWithDynamic = true;
+            config.ScriptNamespaces.Add(typeof(Result).Namespace);
+            config.ReferenceAssemblyPaths.Add(typeof(Node).Assembly.Location);
+            config.NodeTypeAssemblies.Add(typeof(Node).Assembly.GetName().Name);
+            config.NodeTypeAssemblies.Add(typeof(TestDynamicFunction).Assembly.GetName().Name);
+
+            var compiler = new YggCompiler();
+            var manager = new CoroutineManager();
+            var parser = new YggParser(config, compiler);
+            var context = parser.BuildFromFiles<object>("ParserTests\\testScriptC.ygg");
+
+            Assert.AreEqual(0, context.Errors.Count);
+            Assert.AreEqual(1, context.TopmostNodeCount);
+
+            var root = context.Instantiate("root", manager);
+            Assert.IsNotNull(root);
+
+            dynamic state = new ExpandoObject();
+
+            manager.Root = root;
+            manager.Update(state);
+
+            Assert.AreEqual(1UL, manager.TickCount);
+            Assert.AreEqual(Result.Success, manager.Result);
+            Assert.AreEqual(1, state.A);
+        }
+
+        private static void AssertScriptB(CoroutineManager manager)
+        {
+            var state = new TestState();
 
             // Tick 1
             manager.Update(state);
@@ -115,6 +248,37 @@ namespace Yggdrasil.Tests
                 }
 
                 return Output;
+            }
+        }
+
+        public class DynamicLeaf : Node
+        {
+            [XmlAttribute]
+            public Result Output { get; set; }
+
+            [XmlIgnore]
+            [ScriptedFunction]
+            public Action<dynamic> Function { get; set; }
+
+            protected override Coroutine<Result> Tick()
+            {
+                Function?.Invoke(State);
+
+                return Output == Result.Success ? Success : Failure;
+            }
+        }
+
+        public class TestDynamicFunction : Node
+        {
+            [XmlIgnore]
+            [ScriptedFunction]
+            public Func<dynamic, dynamic> Function { get; set; }
+
+            protected override Coroutine<Result> Tick()
+            {
+                var output = Function?.Invoke(State);
+
+                return output == Result.Success ? Success : Failure;
             }
         }
     }

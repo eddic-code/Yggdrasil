@@ -49,14 +49,14 @@ namespace Yggdrasil.Tests
 
             var compiler = new YggCompiler();
             var definitions = new List<ScriptedFunctionDefinition> {dA, dB, dC, dD};
-            var compilation = compiler.Compile<object>(config.ScriptUsings, config.ReferenceAssemblyPaths, definitions);
+            var compilation = compiler.Compile<object>(config.ScriptNamespaces, config.ReferenceAssemblyPaths, definitions);
 
             Assert.AreEqual(0, compilation.Errors.Count);
-            Assert.AreEqual(4, compilation.FunctionMap.Count);
-            Assert.AreEqual(1, compilation.FunctionMap[dA.Guid].Count);
-            Assert.AreEqual(1, compilation.FunctionMap[dB.Guid].Count);
-            Assert.AreEqual(1, compilation.FunctionMap[dC.Guid].Count);
-            Assert.AreEqual(1, compilation.FunctionMap[dD.Guid].Count);
+            Assert.AreEqual(4, compilation.GuidFunctionMap.Count);
+            Assert.AreEqual(1, compilation.GuidFunctionMap[dA.Guid].Count);
+            Assert.AreEqual(1, compilation.GuidFunctionMap[dB.Guid].Count);
+            Assert.AreEqual(1, compilation.GuidFunctionMap[dC.Guid].Count);
+            Assert.AreEqual(1, compilation.GuidFunctionMap[dD.Guid].Count);
 
             dynamic state = new ExpandoObject();
 
@@ -69,22 +69,22 @@ namespace Yggdrasil.Tests
             state.SecondName = "edelgard";
             state.ThirdName = "dimitri";
 
-            compilation.FunctionMap[dA.Guid][0].SetFunctionPropertyValue(conditionA);
+            compilation.GuidFunctionMap[dA.Guid][0].SetFunctionPropertyValue(conditionA);
 
             Assert.IsNotNull(conditionA.Conditional);
             Assert.IsTrue(conditionA.Conditional(state));
 
-            compilation.FunctionMap[dB.Guid][0].SetFunctionPropertyValue(conditionB);
+            compilation.GuidFunctionMap[dB.Guid][0].SetFunctionPropertyValue(conditionB);
 
             Assert.IsNotNull(conditionB.Conditional);
             Assert.IsFalse(conditionB.Conditional(state));
 
-            compilation.FunctionMap[dC.Guid][0].SetFunctionPropertyValue(conditionC);
+            compilation.GuidFunctionMap[dC.Guid][0].SetFunctionPropertyValue(conditionC);
 
             Assert.IsNotNull(conditionC.Conditional);
             Assert.IsTrue(conditionC.Conditional(state));
 
-            compilation.FunctionMap[dD.Guid][0].SetFunctionPropertyValue(conditionD);
+            compilation.GuidFunctionMap[dD.Guid][0].SetFunctionPropertyValue(conditionD);
 
             Assert.IsNotNull(conditionD.Conditional);
 
@@ -121,13 +121,13 @@ namespace Yggdrasil.Tests
 
             var compiler = new YggCompiler();
             var definitions = new List<ScriptedFunctionDefinition> {dA, dB, dC};
-            var compilation = compiler.Compile<TestState>(config.ScriptUsings, config.ReferenceAssemblyPaths, definitions);
+            var compilation = compiler.Compile<TestState>(config.ScriptNamespaces, config.ReferenceAssemblyPaths, definitions);
 
             Assert.AreEqual(0, compilation.Errors.Count);
-            Assert.AreEqual(3, compilation.FunctionMap.Count);
-            Assert.AreEqual(1, compilation.FunctionMap[dA.Guid].Count);
-            Assert.AreEqual(1, compilation.FunctionMap[dB.Guid].Count);
-            Assert.AreEqual(1, compilation.FunctionMap[dC.Guid].Count);
+            Assert.AreEqual(3, compilation.GuidFunctionMap.Count);
+            Assert.AreEqual(1, compilation.GuidFunctionMap[dA.Guid].Count);
+            Assert.AreEqual(1, compilation.GuidFunctionMap[dB.Guid].Count);
+            Assert.AreEqual(1, compilation.GuidFunctionMap[dC.Guid].Count);
 
             var state = new TestState();
 
@@ -140,17 +140,17 @@ namespace Yggdrasil.Tests
             state.SecondName = "edelgard";
             state.ThirdName = "dimitri";
 
-            compilation.FunctionMap[dA.Guid][0].SetFunctionPropertyValue(conditionA);
+            compilation.GuidFunctionMap[dA.Guid][0].SetFunctionPropertyValue(conditionA);
 
             Assert.IsNotNull(conditionA.Conditional);
             Assert.IsTrue(conditionA.Conditional(state));
 
-            compilation.FunctionMap[dB.Guid][0].SetFunctionPropertyValue(conditionB);
+            compilation.GuidFunctionMap[dB.Guid][0].SetFunctionPropertyValue(conditionB);
 
             Assert.IsNotNull(conditionB.Conditional);
             Assert.IsFalse(conditionB.Conditional(state));
 
-            compilation.FunctionMap[dC.Guid][0].SetFunctionPropertyValue(conditionC);
+            compilation.GuidFunctionMap[dC.Guid][0].SetFunctionPropertyValue(conditionC);
 
             Assert.IsNotNull(conditionC.Conditional);
             Assert.IsTrue(conditionC.Conditional(state));

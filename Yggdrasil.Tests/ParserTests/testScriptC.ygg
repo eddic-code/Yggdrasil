@@ -1,0 +1,4 @@
+<Sequence Guid="root">
+  <DynamicLeaf Output="Success" Function=`state.A = 1`/>
+  <TestDynamicFunction Function=`return state.A == 1 ? Result.Success : Result.Failure;`/>
+</Sequence>

@@ -48,7 +48,7 @@ namespace Yggdrasil.Scripting
             new Regex("return[\\s\n\r]+.+[\\s\n\r]*;", RegexOptions.Compiled);
 
         private static readonly HashSet<Type> _supportedScriptedFunctionTypes =
-            new HashSet<Type> {typeof(Action), typeof(Action<>), typeof(Func<>), typeof(Func<,>)};
+            new HashSet<Type> {typeof(Action<>), typeof(Func<>), typeof(Func<,>)};
 
         private static readonly string[] _invalidFunctionCharacters = {"-", ";", ".", ",", " ", "\n", "\r"};
 
@@ -73,10 +73,10 @@ namespace Yggdrasil.Scripting
 
                 if (sf == null) { continue; }
 
-                if (!compilation.FunctionMap.TryGetValue(sf.Guid, out var functions))
+                if (!compilation.GuidFunctionMap.TryGetValue(sf.Guid, out var functions))
                 {
                     functions = new List<ScriptedFunction>();
-                    compilation.FunctionMap[sf.Guid] = functions;
+                    compilation.GuidFunctionMap[sf.Guid] = functions;
                 }
 
                 functions.Add(sf);
@@ -90,9 +90,18 @@ namespace Yggdrasil.Scripting
 
             builderClassText.Append("\n}");
 
-            var references = referencePaths
-                .Select(p => MetadataReference.CreateFromFile(p))
-                .ToList();
+            List<PortableExecutableReference> references;
+            try
+            {
+                references = referencePaths
+                    .Select(p => MetadataReference.CreateFromFile(p))
+                    .ToList();
+            }
+            catch (Exception e)
+            {
+                compilation.Errors.Add(ParserErrorHelper.CannotLoadReference(e.Message));
+                return compilation;
+            }
 
             var options = ScriptOptions.Default.AddReferences(references);
             var script = CSharpScript.Create(builderClassText.ToString(), options);
@@ -118,13 +127,11 @@ namespace Yggdrasil.Scripting
             var entryType = assembly.GetTypes().First(t => t.Name == "FunctionBuilder");
             var builder = Activator.CreateInstance(entryType);
 
-            foreach (var sf in compilation.FunctionMap.Values.SelectMany(g => g))
+            foreach (var sf in compilation.GuidFunctionMap.Values.SelectMany(g => g))
             {
                 sf.Builder = builder;
                 sf.BuilderMethod = entryType.GetMethod(sf.BuilderMethodName);
             }
-
-            compilation.Builder = builder;
 
             return compilation;
         }
@@ -179,14 +186,6 @@ namespace Yggdrasil.Scripting
 
                 if (firstGenericName != null && firstGenericType == typeof(object)) { firstGenericName = "dynamic"; }
                 if (secondGenericName != null && secondGenericType == typeof(object)) { secondGenericName = "dynamic"; }
-            }
-
-            // Action.
-            if (functionType == typeof(Action))
-            {
-                sf.ScriptText = $@"public static void {functionName}() {{ {functionText}; }} 
-                                   public System.Action {builderName}() {{ return {functionName}; }}";
-                return sf;
             }
 
             // Action with single generic.

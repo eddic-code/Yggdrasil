@@ -31,9 +31,41 @@ namespace Yggdrasil.Scripting
                 return null;
             }
 
-            var node = parserNode.CreateInstance(manager, TypeDefMap, Errors);
+            // Uses a depth first loop instead of recursion to avoid potential stack overflows.
+            var root = parserNode.CreateInstance(manager, TypeDefMap, Errors);
+            var n = new InstantiationNode {Instance = root, Parser = parserNode};
+            var open = new Stack<InstantiationNode>();
 
-            return node;
+            open.Push(n);
+
+            while (open.Count > 0)
+            {
+                var next = open.Pop();
+
+                var children = next.Parser.IsDerivedFromTypeDef 
+                    ? TypeDefMap[next.Parser.Tag].Children 
+                    : next.Parser.Children;
+
+                foreach (var parserChild in children)
+                {
+                    var instance = parserChild.CreateInstance(manager, TypeDefMap, Errors);
+                    if (instance == null) { continue; }
+
+                    var c = new InstantiationNode {Instance = instance, Parser = parserChild};
+
+                    if (next.Instance.Children == null) { next.Instance.Children = new List<Node>(); }
+                    next.Instance.Children.Add(instance);
+                    open.Push(c);
+                }
+            }
+
+            return root;
+        }
+
+        private class InstantiationNode
+        {
+            public Node Instance;
+            public ParserNode Parser;
         }
     }
 }
