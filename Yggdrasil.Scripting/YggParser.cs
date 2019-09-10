@@ -81,9 +81,9 @@ namespace Yggdrasil.Scripting
             return document;
         }
 
-        public BuildContext BuildFromFiles<TState>(params string[] files)
+        public BehaviourTreeDefinition BuildFromFiles<TState>(params string[] files)
         {
-            var context = new BuildContext();
+            var context = new BehaviourTreeDefinition();
             context.TypeDefMap = new Dictionary<string, ParserNode>();
 
             // Load all xml documents from files.

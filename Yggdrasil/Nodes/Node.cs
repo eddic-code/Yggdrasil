@@ -27,6 +27,7 @@
 
 #endregion
 
+using System;
 using System.Collections.Generic;
 using System.Xml.Serialization;
 using Yggdrasil.Coroutines;
@@ -36,7 +37,8 @@ namespace Yggdrasil.Nodes
 {
     public abstract class Node
     {
-        private Coroutine<Result> _success, _failure;
+        [ThreadStatic]
+        private static Coroutine<Result> _success, _failure;
 
         [XmlIgnore]
         public CoroutineManager Manager;
@@ -45,10 +47,10 @@ namespace Yggdrasil.Nodes
         protected Coroutine Yield => Manager.Yield;
 
         [XmlIgnore]
-        protected Coroutine<Result> Success => _success ?? (_success = Coroutine<Result>.CreateConst(Result.Success));
+        protected static Coroutine<Result> Success => _success ?? (_success = Coroutine<Result>.CreateConst(Result.Success));
 
         [XmlIgnore]
-        protected Coroutine<Result> Failure => _failure ?? (_failure = Coroutine<Result>.CreateConst(Result.Failure));
+        protected static Coroutine<Result> Failure => _failure ?? (_failure = Coroutine<Result>.CreateConst(Result.Failure));
 
         [XmlIgnore]
         protected object State => Manager.State;

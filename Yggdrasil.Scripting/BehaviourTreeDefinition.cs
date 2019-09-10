@@ -34,7 +34,7 @@ using Yggdrasil.Nodes;
 
 namespace Yggdrasil.Scripting
 {
-    public class BuildContext
+    public class BehaviourTreeDefinition
     {
         public Dictionary<string, ParserNode> TypeDefMap = new Dictionary<string, ParserNode>();
         public List<BuildError> Errors { get; internal set; } = new List<BuildError>();

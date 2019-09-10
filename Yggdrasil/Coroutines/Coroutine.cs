@@ -134,13 +134,13 @@ namespace Yggdrasil.Coroutines
             wrapper.MoveNext();
         }
 
-        public void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
+        public void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter _, ref TStateMachine stateMachine)
             where TAwaiter : INotifyCompletion where TStateMachine : IAsyncStateMachine
         {
             CoroutineManager.CurrentInstance.AddContinuation(this);
         }
 
-        public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter,
+        public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter _,
             ref TStateMachine stateMachine)
             where TAwaiter : ICriticalNotifyCompletion where TStateMachine : IAsyncStateMachine
         {
