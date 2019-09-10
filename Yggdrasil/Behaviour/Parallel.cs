@@ -50,7 +50,7 @@ namespace Yggdrasil.Behaviour
             {
                 foreach (var n in Children)
                 {
-                    var thread = new CoroutineThread(n, false, 1);
+                    var thread = new CoroutineThread(n.Execute, false, 1);
                     _threads.Add(thread);
                 }
             }
@@ -66,7 +66,8 @@ namespace Yggdrasil.Behaviour
 
             foreach (var thread in _threads)
             {
-                if (thread.Result == Result.Success) { result = Result.Success; }
+                var r = thread.Result;
+                if (r != null && ((Result)r) == Result.Success) { result = Result.Success; }
 
                 thread.Reset();
             }

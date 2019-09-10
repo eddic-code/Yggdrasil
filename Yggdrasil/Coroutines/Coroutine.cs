@@ -103,6 +103,19 @@ namespace Yggdrasil.Coroutines
             return result;
         }
 
+        public override object GetThreadResult()
+        {
+            if (_isConstant) { return _result; }
+
+            var result = _result;
+
+            _result = default;
+            IsCompleted = false;
+            _pool.Recycle(this);
+
+            return result;
+        }
+
         public void SetResult(T result)
         {
             _result = result;
@@ -256,6 +269,16 @@ namespace Yggdrasil.Coroutines
             where TAwaiter : ICriticalNotifyCompletion where TStateMachine : IAsyncStateMachine
         {
             CoroutineManager.CurrentInstance.AddContinuation(this);
+        }
+
+        public override object GetThreadResult()
+        {
+            if (_isConstant) { return null; }
+
+            IsCompleted = false;
+            _pool.Recycle(this);
+
+            return null;
         }
     }
 }

@@ -57,7 +57,7 @@ namespace Yggdrasil.Coroutines
 
         public ulong TickCount => _mainThread?.TickCount ?? 0;
 
-        public Result Result => _mainThread?.Result ?? Result.Unknown;
+        public object Result => _mainThread?.Result;
 
         public Node Root
         {
@@ -65,7 +65,7 @@ namespace Yggdrasil.Coroutines
             set
             {
                 _root = value;
-                _mainThread = new CoroutineThread(value, true, 0);
+                _mainThread = new CoroutineThread(_root.Execute, true, 0);
                 Reset();
             }
         }

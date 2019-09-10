@@ -40,7 +40,16 @@ namespace Yggdrasil.Behaviour
 
         public ulong TickCount => _manager.TickCount;
 
-        public Result Result => _manager.Result;
+        public Result Result
+        {
+            get
+            {
+                var result = _manager.Result;
+                if (result == null) { return Result.Unknown; }
+
+                return (Result) result;
+            }
+        }
 
         public void Update(object state = null)
         {

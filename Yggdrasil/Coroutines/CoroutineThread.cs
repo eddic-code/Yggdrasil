@@ -27,9 +27,8 @@
 
 #endregion
 
+using System;
 using System.Collections.Generic;
-using Yggdrasil.Enums;
-using Yggdrasil.Behaviour;
 
 namespace Yggdrasil.Coroutines
 {
@@ -38,9 +37,9 @@ namespace Yggdrasil.Coroutines
         private readonly List<IContinuation> _continuations = new List<IContinuation>(100);
         private readonly Stack<IContinuation> _continuationsBuffer = new Stack<IContinuation>(100);
 
-        private Coroutine<Result> _rootCoroutine;
+        private CoroutineBase _rootCoroutine;
 
-        public CoroutineThread(Node root, bool neverCompletes, ulong ticksToComplete)
+        public CoroutineThread(Func<CoroutineBase> root, bool neverCompletes, ulong ticksToComplete)
         {
             Root = root;
             TicksToComplete = ticksToComplete;
@@ -53,7 +52,7 @@ namespace Yggdrasil.Coroutines
         // Inbound dependencies are those which this thread depends on to complete before itself can complete.
         internal HashSet<CoroutineThread> InputDependencies { get; } = new HashSet<CoroutineThread>();
 
-        public Node Root { get; }
+        public Func<CoroutineBase> Root { get; }
 
         public ulong TicksToComplete { get; }
 
@@ -63,7 +62,7 @@ namespace Yggdrasil.Coroutines
 
         public bool IsComplete { get; private set; }
 
-        public Result Result { get; private set; }
+        public object Result { get; private set; }
 
         public bool IsRunning { get; private set; }
 
@@ -88,8 +87,8 @@ namespace Yggdrasil.Coroutines
             }
             else
             {
-                Result = Result.Unknown;
-                _rootCoroutine = Root.Execute();
+                Result = null;
+                _rootCoroutine = Root();
             }
 
             ConsumeBuffers();
@@ -102,7 +101,7 @@ namespace Yggdrasil.Coroutines
             IsRunning = false;
             TickCount = 0;
             IsComplete = false;
-            Result = Result.Unknown;
+            Result = null;
 
             foreach (var cont in _continuations) { cont.Discard(); }
 
@@ -132,7 +131,7 @@ namespace Yggdrasil.Coroutines
             if (_continuations.Count == 0)
             {
                 // Forces recycling, otherwise GetResult() is never called for the root coroutine.
-                Result = _rootCoroutine.GetResult();
+                Result = _rootCoroutine.GetThreadResult();
                 TickCount += 1;
                 IsComplete = !NeverCompletes && TickCount >= TicksToComplete;
             }
