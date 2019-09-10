@@ -31,8 +31,7 @@ using System;
 using System.Collections.Generic;
 using System.Xml;
 using System.Xml.Serialization;
-using Yggdrasil.Coroutines;
-using Yggdrasil.Nodes;
+using Yggdrasil.Behaviour;
 
 namespace Yggdrasil.Scripting
 {
@@ -51,16 +50,15 @@ namespace Yggdrasil.Scripting
         public ParserNode TypeDef;
         public XmlNode Xml;
 
-        public Node CreateInstance(CoroutineManager manager, Dictionary<string, ParserNode> typeDefMap,
+        public Node CreateInstance(Dictionary<string, ParserNode> typeDefMap,
             List<BuildError> errors)
         {
             return IsDerivedFromTypeDef
-                ? CreateTypeDefInstance(manager, typeDefMap, errors)
-                : CreateStaticTypeInstance(manager, typeDefMap, errors);
+                ? CreateTypeDefInstance(typeDefMap, errors)
+                : CreateStaticTypeInstance(errors);
         }
 
-        private Node CreateTypeDefInstance(CoroutineManager manager, Dictionary<string, ParserNode> typeDefMap,
-            List<BuildError> errors)
+        private Node CreateTypeDefInstance(Dictionary<string, ParserNode> typeDefMap, List<BuildError> errors)
         {
             // Find the TypeDef parser node.
             if (!typeDefMap.TryGetValue(Tag, out var parserDef))
@@ -70,11 +68,10 @@ namespace Yggdrasil.Scripting
             }
 
             // Create an instance from the TypeDef parser node.
-            var instance = parserDef.CreateInstance(manager, typeDefMap, errors);
+            var instance = parserDef.CreateInstance(typeDefMap, errors);
             if (instance == null) { return null; }
 
             // Set manager and guid.
-            instance.Manager = manager;
             instance.Guid = Guid;
 
             // Set function values.
@@ -85,8 +82,7 @@ namespace Yggdrasil.Scripting
             return instance;
         }
 
-        private Node CreateStaticTypeInstance(CoroutineManager manager, Dictionary<string, ParserNode> typeDefMap,
-            List<BuildError> errors)
+        private Node CreateStaticTypeInstance(List<BuildError> errors)
         {
             // Create an instance using reflection.
             Node instance;
@@ -109,7 +105,6 @@ namespace Yggdrasil.Scripting
             }
 
             // Set manager and guid.
-            instance.Manager = manager;
             instance.Guid = Guid;
 
             // Set function values.

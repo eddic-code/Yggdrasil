@@ -35,7 +35,7 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Xml;
 using Yggdrasil.Attributes;
-using Yggdrasil.Nodes;
+using Yggdrasil.Behaviour;
 
 namespace Yggdrasil.Scripting
 {
@@ -122,7 +122,7 @@ namespace Yggdrasil.Scripting
             // Instantiate nodes once to test them.
             foreach (var parserNode in context.ParserNodes.Where(p => p.IsTopmost))
             {
-                var node = parserNode.CreateInstance(null, context.TypeDefMap, context.Errors);
+                var node = parserNode.CreateInstance(context.TypeDefMap, context.Errors);
                 if (context.Errors.Any(e => e.IsCritical)) { return context; }
 
                 if (node != null) { context.TopmostNodeCount += 1; }

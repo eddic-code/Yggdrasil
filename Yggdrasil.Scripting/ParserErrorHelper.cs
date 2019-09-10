@@ -28,7 +28,7 @@
 #endregion
 
 using System.Collections.Generic;
-using Yggdrasil.Nodes;
+using Yggdrasil.Behaviour;
 
 namespace Yggdrasil.Scripting
 {

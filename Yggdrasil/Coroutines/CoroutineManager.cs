@@ -29,26 +29,22 @@
 
 using System;
 using System.Collections.Generic;
-using Yggdrasil.Enums;
-using Yggdrasil.Nodes;
+using System.Threading.Tasks;
 
 namespace Yggdrasil.Coroutines
 {
     // The real awaiter.
-    public class CoroutineManager
+    public class CoroutineManager<T> : CoroutineManagerBase
     {
-        [ThreadStatic]
-        internal static CoroutineManager CurrentInstance;
-
-        private readonly List<CoroutineThread> _threads = new List<CoroutineThread>(100);
+        private readonly Stack<CoroutineThread<T>> _iterationOpenSet = new Stack<CoroutineThread<T>>(100);
+        private readonly Stack<CoroutineThread<T>> _iterationReverseSet = new Stack<CoroutineThread<T>>(100);
+        private readonly List<CoroutineThread<T>> _threads = new List<CoroutineThread<T>>(100);
 
         internal readonly Coroutine Yield;
-        private CoroutineThread _activeThread;
         private int _activeThreadIndex;
-        private bool _initialized;
-        private CoroutineThread _mainThread;
+        private CoroutineThread<T> _mainThread;
 
-        private Node _root;
+        private Func<Coroutine<T>> _root;
 
         public CoroutineManager()
         {
@@ -57,55 +53,29 @@ namespace Yggdrasil.Coroutines
 
         public ulong TickCount => _mainThread?.TickCount ?? 0;
 
-        public Result Result => _mainThread?.Result ?? Result.Unknown;
+        public T Result => _mainThread.Result;
 
-        public Node Root
+        public Func<Coroutine<T>> Root
         {
             get => _root;
             set
             {
                 _root = value;
-                _initialized = false;
-                _mainThread = new CoroutineThread(value, true, 0);
+                _mainThread = new CoroutineThread<T>(_root, true, 0);
                 Reset();
             }
         }
 
-        internal object State { get; private set; }
+        public CoroutineThread<T> ActiveThread { get; private set; }
 
-        public event EventHandler<Node> NodeActiveEventHandler;
-
-        public event EventHandler<Node> NodeInactiveEventHandler;
-
-        public void Initialize()
-        {
-            var open = new Stack<Node>();
-            open.Push(Root);
-
-            while (open.Count > 0)
-            {
-                var next = open.Pop();
-                next.Initialize();
-
-                if (next.Children == null) { continue; }
-
-                foreach (var c in next.Children) { open.Push(c); }
-            }
-
-            _initialized = true;
-        }
-
-        public void Update(object state = null)
+        public void Update()
         {
             if (Root == null) { return; }
 
-            if (!_initialized) { Initialize(); }
-
             CurrentInstance = this;
-            State = state;
 
             _activeThreadIndex = 0;
-            _activeThread = null;
+            ActiveThread = null;
 
             // Start a new tick.
             if (_threads.Count <= 0) { _threads.Add(_mainThread); }
@@ -117,11 +87,11 @@ namespace Yggdrasil.Coroutines
 
             while (_threads.Count > _activeThreadIndex)
             {
-                _activeThread = _threads[_activeThreadIndex];
-                _activeThread.Tick();
+                ActiveThread = _threads[_activeThreadIndex];
+                ActiveThread.Tick();
 
                 // If the thread is still running, leave it on the list.
-                if (!_activeThread.IsComplete)
+                if (!ActiveThread.IsComplete)
                 {
                     _activeThreadIndex += 1;
                     continue;
@@ -131,14 +101,14 @@ namespace Yggdrasil.Coroutines
                 _threads.RemoveAt(_activeThreadIndex);
 
                 // Remove any inbound dependencies since they are now irrelevant.
-                foreach (var d in _activeThread.InputDependencies) { d.OutputDependencies.Remove(_activeThread); }
+                foreach (var d in ActiveThread.InputDependencies) { d.OutputDependencies.Remove(ActiveThread); }
 
-                _activeThread.InputDependencies.Clear();
+                ActiveThread.InputDependencies.Clear();
 
                 // Remove outbound dependencies and mark threads that can be ticked again this frame.
-                foreach (var d in _activeThread.OutputDependencies)
+                foreach (var d in ActiveThread.OutputDependencies)
                 {
-                    d.InputDependencies.Remove(_activeThread);
+                    d.InputDependencies.Remove(ActiveThread);
                     if (d.InputDependencies.Count <= 0)
                     {
                         d.DependenciesFinished = true;
@@ -148,19 +118,75 @@ namespace Yggdrasil.Coroutines
             }
 
             if (dependenciesChanged) { ProcessDependencies(); }
+
+            CurrentInstance = null;
         }
 
         public void Reset()
         {
             foreach (var thread in _threads) { thread.Reset(); }
 
-            _threads.Clear();
             _mainThread.Reset();
-            _activeThread = null;
+            _threads.Clear();
+            _iterationOpenSet.Clear();
+            _iterationReverseSet.Clear();
+
+            ActiveThread = null;
             _activeThreadIndex = 0;
         }
 
-        internal void SetException(Exception exception)
+        internal void ProcessThread(CoroutineThread<T> thread)
+        {
+            _threads.Add(thread);
+        }
+
+        internal void ProcessThreadAsDependency(CoroutineThread<T> thread)
+        {
+            _threads.Add(thread);
+            thread.OutputDependencies.Add(ActiveThread);
+
+            ActiveThread.InputDependencies.Add(thread);
+            ActiveThread.DependenciesFinished = false;
+        }
+
+        internal void TerminateThreadAndDependencies(CoroutineThread<T> thread)
+        {
+            // All threads below this one must also be terminated.
+            // We iterate inbound dependencies from bottom up.
+
+            _iterationOpenSet.Clear();
+            _iterationReverseSet.Clear();
+            _iterationOpenSet.Push(thread);
+
+            while (_iterationOpenSet.Count > 0)
+            {
+                var next = _iterationOpenSet.Pop();
+                _iterationReverseSet.Push(next);
+
+                foreach (var dependency in next.InputDependencies) { _iterationOpenSet.Push(dependency); }
+            }
+
+            while (_iterationReverseSet.Count > 0)
+            {
+                var t = _iterationReverseSet.Pop();
+
+                t.Reset();
+                if (!_threads.Contains(t)) { continue; }
+
+                // The active thread is removed on the tick loop when not running anymore.
+                if (ActiveThread == t) { continue; }
+
+                var index = _threads.IndexOf(t);
+                _threads.Remove(t);
+
+                // Adjust the active thread index if necessary.
+                if (index <= 0) { continue; }
+
+                if (index < _activeThreadIndex) { _activeThreadIndex -= 1; }
+            }
+        }
+
+        internal override void SetException(Exception exception)
         {
             Reset();
 
@@ -168,50 +194,9 @@ namespace Yggdrasil.Coroutines
             throw exception;
         }
 
-        internal void OnNodeTickStarted(Node node)
+        internal override void AddContinuation(IContinuation continuation)
         {
-            _activeThread.OnNodeTickStarted(node);
-            OnNodeActiveEvent(node);
-        }
-
-        internal void OnNodeTickFinished(Node node)
-        {
-            _activeThread.OnNodeTickFinished();
-            OnNodeInactiveEvent(node);
-        }
-
-        internal void ProcessThread(CoroutineThread thread)
-        {
-            _threads.Add(thread);
-        }
-
-        internal void ProcessThreadAsDependency(CoroutineThread thread)
-        {
-            _threads.Add(thread);
-            thread.OutputDependencies.Add(_activeThread);
-
-            _activeThread.InputDependencies.Add(thread);
-            _activeThread.DependenciesFinished = false;
-        }
-
-        internal void TerminateThread(CoroutineThread thread)
-        {
-            thread.Reset();
-            if (!_threads.Contains(thread)) { return; }
-
-            // The active thread is removed on the tick loop when not running anymore.
-            if (_activeThread == thread) { return; }
-
-            var index = _threads.IndexOf(thread);
-            _threads.Remove(thread);
-
-            // Adjust the active thread index if necessary.
-            if (index < _activeThreadIndex) { _activeThreadIndex -= 1; }
-        }
-
-        internal void AddContinuation(IContinuation continuation)
-        {
-            _activeThread.AddContinuation(continuation);
+            ActiveThread.AddContinuation(continuation);
         }
 
         private void ProcessDependencies()
@@ -227,18 +212,18 @@ namespace Yggdrasil.Coroutines
 
                 while (_threads.Count > _activeThreadIndex)
                 {
-                    _activeThread = _threads[_activeThreadIndex];
-                    if (!_activeThread.DependenciesFinished)
+                    ActiveThread = _threads[_activeThreadIndex];
+                    if (!ActiveThread.DependenciesFinished)
                     {
                         _activeThreadIndex += 1;
                         continue;
                     }
 
-                    _activeThread.DependenciesFinished = false;
-                    _activeThread.Tick();
+                    ActiveThread.DependenciesFinished = false;
+                    ActiveThread.Tick();
 
                     // If the thread is still running, leave it on the list.
-                    if (!_activeThread.IsComplete)
+                    if (!ActiveThread.IsComplete)
                     {
                         _activeThreadIndex += 1;
                         continue;
@@ -248,14 +233,14 @@ namespace Yggdrasil.Coroutines
                     _threads.RemoveAt(_activeThreadIndex);
 
                     // Remove any inbound dependencies since they are now irrelevant.
-                    foreach (var d in _activeThread.InputDependencies) { d.OutputDependencies.Remove(_activeThread); }
+                    foreach (var d in ActiveThread.InputDependencies) { d.OutputDependencies.Remove(ActiveThread); }
 
-                    _activeThread.InputDependencies.Clear();
+                    ActiveThread.InputDependencies.Clear();
 
                     // Remove outbound dependencies and mark threads that can be ticked again this frame.
-                    foreach (var d in _activeThread.OutputDependencies)
+                    foreach (var d in ActiveThread.OutputDependencies)
                     {
-                        d.InputDependencies.Remove(_activeThread);
+                        d.InputDependencies.Remove(ActiveThread);
                         if (d.InputDependencies.Count <= 0)
                         {
                             d.DependenciesFinished = true;
@@ -265,18 +250,6 @@ namespace Yggdrasil.Coroutines
                 }
             }
             while (dependenciesFinished);
-        }
-
-        protected virtual void OnNodeActiveEvent(Node node)
-        {
-            var handler = NodeActiveEventHandler;
-            handler?.Invoke(this, node);
-        }
-
-        protected virtual void OnNodeInactiveEvent(Node node)
-        {
-            var handler = NodeInactiveEventHandler;
-            handler?.Invoke(this, node);
         }
     }
 }

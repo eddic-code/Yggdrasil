@@ -6,7 +6,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Yggdrasil.Attributes;
 using Yggdrasil.Coroutines;
 using Yggdrasil.Enums;
-using Yggdrasil.Nodes;
+using Yggdrasil.Behaviour;
 using Yggdrasil.Scripting;
 
 namespace Yggdrasil.Tests
@@ -24,17 +24,16 @@ namespace Yggdrasil.Tests
             config.NodeTypeAssemblies.Add(typeof(TestRunningAction).Assembly.GetName().Name);
 
             var compiler = new YggCompiler();
-            var manager = new CoroutineManager();
             var parser = new YggParser(config, compiler);
             var context = parser.BuildFromFiles<TestState>("ParserTests\\testScriptB.ygg");
 
             Assert.AreEqual(0, context.Errors.Count);
             Assert.AreEqual(3, context.TopmostNodeCount);
 
-            var root = context.Instantiate("root", manager);
+            var root = context.Instantiate("root");
             Assert.IsNotNull(root);
 
-            manager.Root = root;
+            var manager = new BehaviourTree(root);
             AssertScriptB(manager);
 
             manager.Reset();
@@ -51,7 +50,6 @@ namespace Yggdrasil.Tests
             config.NodeTypeAssemblies.Add(typeof(TestRunningAction).Assembly.GetName().Name);
 
             var compiler = new YggCompiler();
-            var manager = new CoroutineManager();
             var parser = new YggParser(config, compiler);
 
             for (var i = 0; i < 5; i++)
@@ -61,10 +59,10 @@ namespace Yggdrasil.Tests
                 Assert.AreEqual(0, context.Errors.Count);
                 Assert.AreEqual(3, context.TopmostNodeCount);
 
-                var root = context.Instantiate("root", manager);
+                var root = context.Instantiate("root");
                 Assert.IsNotNull(root);
 
-                manager.Root = root;
+                var manager = new BehaviourTree(root);
                 AssertScriptB(manager);
             }
         }
@@ -147,19 +145,18 @@ namespace Yggdrasil.Tests
             config.NodeTypeAssemblies.Add(typeof(TestDynamicFunction).Assembly.GetName().Name);
 
             var compiler = new YggCompiler();
-            var manager = new CoroutineManager();
             var parser = new YggParser(config, compiler);
             var context = parser.BuildFromFiles<object>("ParserTests\\testScriptC.ygg");
 
             Assert.AreEqual(0, context.Errors.Count);
             Assert.AreEqual(1, context.TopmostNodeCount);
 
-            var root = context.Instantiate("root", manager);
+            var root = context.Instantiate("root");
             Assert.IsNotNull(root);
 
             dynamic state = new ExpandoObject();
 
-            manager.Root = root;
+            var manager = new BehaviourTree(root);
             manager.Update(state);
 
             Assert.AreEqual(1UL, manager.TickCount);
@@ -167,7 +164,7 @@ namespace Yggdrasil.Tests
             Assert.AreEqual(1, state.A);
         }
 
-        private static void AssertScriptB(CoroutineManager manager)
+        private static void AssertScriptB(BehaviourTree manager)
         {
             var state = new TestState();
 

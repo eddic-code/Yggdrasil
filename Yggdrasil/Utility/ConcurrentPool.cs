@@ -31,9 +31,25 @@ using System.Collections.Concurrent;
 
 namespace Yggdrasil.Utility
 {
-    internal class ConcurrentPool<T> where T : class, new()
+    public class ConcurrentPool<T> where T : class, new()
     {
+        public volatile int MaxPoolCount = int.MaxValue - 100;
         private readonly ConcurrentQueue<T> _queue = new ConcurrentQueue<T>();
+
+        public int Count => _queue.Count;
+
+        public void Clear()
+        {
+            while (_queue.TryDequeue(out _)) { }
+        }
+
+        public void PrePool(int count)
+        {
+            while (count-- > 0 && _queue.Count < MaxPoolCount)
+            {
+                _queue.Enqueue(new T());
+            }
+        }
 
         public T Get()
         {
@@ -44,6 +60,7 @@ namespace Yggdrasil.Utility
 
         public void Recycle(T item)
         {
+            if (_queue.Count >= MaxPoolCount) { return; }
             _queue.Enqueue(item);
         }
     }

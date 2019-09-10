@@ -34,12 +34,12 @@ using Yggdrasil.Attributes;
 using Yggdrasil.Coroutines;
 using Yggdrasil.Enums;
 
-namespace Yggdrasil.Nodes
+namespace Yggdrasil.Behaviour
 {
     public class Interrupt : Node
     {
         [XmlIgnore]
-        private readonly List<CoroutineThread> _threads = new List<CoroutineThread>(10);
+        private readonly List<CoroutineThread<Result>> _threads = new List<CoroutineThread<Result>>(10);
 
         public Interrupt(Func<object, bool> conditional)
         {
@@ -63,7 +63,7 @@ namespace Yggdrasil.Nodes
             {
                 foreach (var n in Children)
                 {
-                    var thread = new CoroutineThread(n, false, 1);
+                    var thread = new CoroutineThread<Result>(n.Execute, false, 1);
                     _threads.Add(thread);
                 }
             }
@@ -76,7 +76,7 @@ namespace Yggdrasil.Nodes
             foreach (var thread in _threads)
             {
                 thread.Reset();
-                Manager.ProcessThreadAsDependency(thread);
+                BehaviourTree.CurrentInstance.ProcessThreadAsDependency(thread);
             }
 
             while (Continue())
@@ -85,7 +85,7 @@ namespace Yggdrasil.Nodes
 
                 if (!Conditional(State))
                 {
-                    foreach (var thread in _threads) { Manager.TerminateThread(thread); }
+                    foreach (var thread in _threads) { BehaviourTree.CurrentInstance.TerminateThread(thread); }
 
                     return Result.Failure;
                 }

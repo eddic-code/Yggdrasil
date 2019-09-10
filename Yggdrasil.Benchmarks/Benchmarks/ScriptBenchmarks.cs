@@ -5,7 +5,7 @@ using BenchmarkDotNet.Attributes;
 using Yggdrasil.Attributes;
 using Yggdrasil.Coroutines;
 using Yggdrasil.Enums;
-using Yggdrasil.Nodes;
+using Yggdrasil.Behaviour;
 using Yggdrasil.Scripting;
 
 namespace Yggdrasil.Benchmarks
@@ -14,7 +14,7 @@ namespace Yggdrasil.Benchmarks
     [MemoryDiagnoser]
     public class ScriptBenchmarks
     {
-        private CoroutineManager _manager;
+        private BehaviourTree _tree;
         private TestState _state;
 
         [GlobalSetup]
@@ -31,13 +31,11 @@ namespace Yggdrasil.Benchmarks
             var context = parser.BuildFromFiles<TestState>(scriptPath);
             if (context.Errors.Count > 0) { throw new Exception(context.Errors[0].Message); }
 
-            _manager = new CoroutineManager();
-            _manager.Root = context.Instantiate("root", _manager);
-            _manager.Initialize();
+            _tree = new BehaviourTree(context.Instantiate("root"));
             _state = new TestState();
 
             // Warmup.
-            while (_manager.TickCount == 0) { _manager.Update(_state); }
+            while (_tree.TickCount == 0) { _tree.Update(_state); }
 
             _state = new TestState();
         }
@@ -45,12 +43,12 @@ namespace Yggdrasil.Benchmarks
         [Benchmark]
         public void Execute()
         {
-            _manager.Update(_state);
-            _manager.Update(_state);
-            _manager.Update(_state);
-            _manager.Update(_state);
-            _manager.Update(_state);
-            _manager.Update(_state);
+            _tree.Update(_state);
+            _tree.Update(_state);
+            _tree.Update(_state);
+            _tree.Update(_state);
+            _tree.Update(_state);
+            _tree.Update(_state);
         }
 
         public class TestState

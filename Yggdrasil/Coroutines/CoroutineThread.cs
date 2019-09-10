@@ -27,44 +27,42 @@
 
 #endregion
 
+using System;
 using System.Collections.Generic;
-using Yggdrasil.Enums;
-using Yggdrasil.Nodes;
 
 namespace Yggdrasil.Coroutines
 {
-    public class CoroutineThread
+    public class CoroutineThread<T>
     {
-        private readonly Stack<Node> _active = new Stack<Node>(100);
         private readonly List<IContinuation> _continuations = new List<IContinuation>(100);
         private readonly Stack<IContinuation> _continuationsBuffer = new Stack<IContinuation>(100);
 
-        private Coroutine<Result> _rootCoroutine;
+        private Coroutine<T> _rootCoroutine;
 
-        public CoroutineThread(Node root, bool neverCompletes, ulong ticksToComplete)
+        public CoroutineThread(Func<Coroutine<T>> root, bool neverCompletes, ulong ticksToComplete)
         {
             Root = root;
             TicksToComplete = ticksToComplete;
             NeverCompletes = neverCompletes;
         }
 
-        internal HashSet<CoroutineThread> OutputDependencies { get; } = new HashSet<CoroutineThread>();
+        // Outbound dependencies are those which need this thread to complete before they can complete.
+        internal HashSet<CoroutineThread<T>> OutputDependencies { get; } = new HashSet<CoroutineThread<T>>();
 
-        internal HashSet<CoroutineThread> InputDependencies { get; } = new HashSet<CoroutineThread>();
+        // Inbound dependencies are those which this thread depends on to complete before itself can complete.
+        internal HashSet<CoroutineThread<T>> InputDependencies { get; } = new HashSet<CoroutineThread<T>>();
 
-        public Node Root { get; }
+        public Func<Coroutine<T>> Root { get; }
 
         public ulong TicksToComplete { get; }
 
         public bool NeverCompletes { get; }
 
-        public IEnumerable<Node> ActiveNodes => _active;
-
         internal bool DependenciesFinished { get; set; }
 
         public bool IsComplete { get; private set; }
 
-        public Result Result { get; private set; }
+        public T Result { get; private set; }
 
         public bool IsRunning { get; private set; }
 
@@ -89,8 +87,8 @@ namespace Yggdrasil.Coroutines
             }
             else
             {
-                Result = Result.Unknown;
-                _rootCoroutine = Root.Execute();
+                Result = default;
+                _rootCoroutine = Root();
             }
 
             ConsumeBuffers();
@@ -100,14 +98,10 @@ namespace Yggdrasil.Coroutines
 
         public void Reset()
         {
-            foreach (var node in _active) { node.Terminate(); }
-
             IsRunning = false;
             TickCount = 0;
             IsComplete = false;
-            Result = Result.Unknown;
-
-            _active.Clear();
+            Result = default;
 
             foreach (var cont in _continuations) { cont.Discard(); }
 
@@ -120,16 +114,6 @@ namespace Yggdrasil.Coroutines
             InputDependencies.Clear();
             OutputDependencies.Clear();
             DependenciesFinished = false;
-        }
-
-        internal void OnNodeTickStarted(Node node)
-        {
-            _active.Push(node);
-        }
-
-        internal void OnNodeTickFinished()
-        {
-            _active.Pop();
         }
 
         internal void AddContinuation(IContinuation continuation)

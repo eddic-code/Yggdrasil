@@ -27,59 +27,33 @@
 
 #endregion
 
-using System.Collections.Generic;
 using System.Xml.Serialization;
 using Yggdrasil.Coroutines;
 using Yggdrasil.Enums;
 
-namespace Yggdrasil.Nodes
+namespace Yggdrasil.Behaviour
 {
-    public class Parallel : Node
+    public class Inverter : Node
     {
         [XmlIgnore]
-        private readonly List<CoroutineThread> _threads = new List<CoroutineThread>(10);
-
-        public override void Terminate()
+        public Node Child
         {
-            foreach (var thread in _threads) { thread.Reset(); }
-        }
-
-        public override void Initialize()
-        {
-            if (Children != null && Children.Count > 0 && _threads.Count <= 0)
+            get
             {
-                foreach (var n in Children)
-                {
-                    var thread = new CoroutineThread(n, false, 1);
-                    _threads.Add(thread);
-                }
+                if (Children == null || Children.Count <= 0) { return null; }
+
+                return Children[0];
             }
         }
 
         protected override async Coroutine<Result> Tick()
         {
-            foreach (var thread in _threads) { Manager.ProcessThreadAsDependency(thread); }
+            if (Child == null) { return Result.Failure; }
 
-            while (Continue()) { await Yield; }
+            var result = await Child.Execute();
+            if (result == Result.Unknown) { return result; }
 
-            var result = Result.Failure;
-
-            foreach (var thread in _threads)
-            {
-                if (thread.Result == Result.Success) { result = Result.Success; }
-
-                thread.Reset();
-            }
-
-            return result;
-        }
-
-        private bool Continue()
-        {
-            var processing = false;
-            foreach (var thread in _threads) { processing = processing || !thread.IsComplete; }
-
-            return processing;
+            return result == Result.Success ? Result.Failure : Result.Success;
         }
     }
 }

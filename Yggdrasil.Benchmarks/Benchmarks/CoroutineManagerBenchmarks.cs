@@ -4,7 +4,7 @@ using System.Dynamic;
 using BenchmarkDotNet.Attributes;
 using Yggdrasil.Coroutines;
 using Yggdrasil.Enums;
-using Yggdrasil.Nodes;
+using Yggdrasil.Behaviour;
 
 namespace Yggdrasil.Benchmarks
 {
@@ -12,7 +12,7 @@ namespace Yggdrasil.Benchmarks
     [MemoryDiagnoser]
     public class CoroutineManagerBenchmarks
     {
-        private CoroutineManager _managerA, _managerB, _managerC, _managerD, _managerE, _managerF;
+        private BehaviourTree _treeA, _treeB, _treeC, _treeD, _treeE, _treeF;
         private State _stateA, _stateB, _stateE;
         private object _dynamicStateA;
 
@@ -29,19 +29,18 @@ namespace Yggdrasil.Benchmarks
 
         public void SetupNestedParallel()
         {
-            _managerA = new CoroutineManager();
-            var parallelA = new Parallel {Manager = _managerA};
-            var parallelB = new Parallel {Manager = _managerA};
-            var parallelC = new Parallel {Manager = _managerA};
+            var parallelA = new Parallel();
+            var parallelB = new Parallel();
+            var parallelC = new Parallel();
 
-            var root = new Sequence{Manager = _managerA};
-            var entryCondition = new Condition(s => ((State) s).Entry) {Manager = _managerA};
+            var root = new Sequence();
+            var entryCondition = new Condition(s => ((State) s).Entry);
 
-            var conditionalA = new TestYieldConditionNode(_managerA) {Conditional = s => s.A};
-            var conditionalB = new TestYieldConditionNode(_managerA) {Conditional = s => s.B};
-            var conditionalC = new TestYieldConditionNode(_managerA) {Conditional = s => s.C};
-            var conditionalD = new TestYieldConditionNode(_managerA) {Conditional = s => s.D};
-            var conditionalE = new TestRunningConditionNode(_managerA) {Conditional = s => s.E};
+            var conditionalA = new TestYieldConditionNode {Conditional = s => s.A};
+            var conditionalB = new TestYieldConditionNode {Conditional = s => s.B};
+            var conditionalC = new TestYieldConditionNode {Conditional = s => s.C};
+            var conditionalD = new TestYieldConditionNode {Conditional = s => s.D};
+            var conditionalE = new TestRunningConditionNode {Conditional = s => s.E};
 
             root.Children = new List<Node> {entryCondition, parallelA};
 
@@ -49,79 +48,69 @@ namespace Yggdrasil.Benchmarks
             parallelB.Children = new List<Node> {conditionalB, conditionalC};
             parallelC.Children = new List<Node> {conditionalD, conditionalE};
 
-            _managerA.Root = root;
+            _treeA = new BehaviourTree(root);
             _stateA = new State {Entry = true, A = true, B = true, C = true, D = true, E = true};
 
-            _managerA.Initialize();
-            while (_managerA.TickCount == 0) { _managerA.Update(_stateA); }
+            while (_treeA.TickCount == 0) { _treeA.Update(_stateA); }
         }
 
         public void SetupParallel()
         {
-            _managerB = new CoroutineManager();
-            var root = new Parallel {Manager = _managerB};
+            var root = new Parallel();
 
-            var conditionalA = new TestYieldConditionNode(_managerB) {Conditional = s => s.A};
-            var conditionalB = new TestNestedConditionNode(_managerB) {Conditional = s => s.B};
-            var conditionalC = new TestConditionNode(_managerB) {Conditional = s => s.C};
-            var conditionalD = new TestRunningConditionNode(_managerB) {Conditional = s => s.D};
+            var conditionalA = new TestYieldConditionNode {Conditional = s => s.A};
+            var conditionalB = new TestNestedConditionNode {Conditional = s => s.B};
+            var conditionalC = new TestConditionNode {Conditional = s => s.C};
+            var conditionalD = new TestRunningConditionNode {Conditional = s => s.D};
 
             root.Children = new List<Node> {conditionalA, conditionalB, conditionalC, conditionalD};
-            _managerB.Root = root;
+            _treeB = new BehaviourTree(root);
 
             _stateB = new State {A = true, B = false, C = true, D = false};
 
-            _managerB.Initialize();
-            while (_managerB.TickCount == 0) { _managerB.Update(_stateB); }
+            while (_treeB.TickCount == 0) { _treeB.Update(_stateB); }
         }
 
         public void SetupGenericCoroutine()
         {
-            _managerC = new CoroutineManager();
-            _managerC.Root = new GenericCoroutineTestNode(_managerC);
+            _treeC = new BehaviourTree(new GenericCoroutineTestNode());
 
-            _managerC.Initialize();
-            while (_managerC.TickCount == 0) { _managerC.Update(); }
+            while (_treeC.TickCount == 0) { _treeC.Update(); }
         }
 
         public void SetupNestedCoroutine()
         {
-            _managerD = new CoroutineManager();
-            _managerD.Root = new NestedCoroutineTestNode(_managerD);
+            _treeD = new BehaviourTree(new NestedCoroutineTestNode());
 
-            _managerD.Initialize();
-            while (_managerD.TickCount == 0) { _managerD.Update(); }
+            while (_treeD.TickCount == 0) { _treeD.Update(); }
         }
 
         public void SetupSequence()
         {
-            _managerE = new CoroutineManager();
-            var root = new Sequence {Manager = _managerE};
+            var root = new Sequence();
 
-            var conditionalA = new TestConditionNode(_managerE) {Conditional = s => s.A};
-            var conditionalB = new TestYieldConditionNode(_managerE) {Conditional = s => s.B};
-            var conditionalC = new TestConditionNode(_managerE) {Conditional = s => s.C};
+            var conditionalA = new TestConditionNode {Conditional = s => s.A};
+            var conditionalB = new TestYieldConditionNode {Conditional = s => s.B};
+            var conditionalC = new TestConditionNode {Conditional = s => s.C};
 
             root.Children = new List<Node> {conditionalA, conditionalB, conditionalC};
-            _managerE.Root = root;
+            _treeE = new BehaviourTree(root);
 
             _stateE = new State {A = true, B = true, C = true};
 
-            _managerE.Initialize();
-            while (_managerE.TickCount == 0) { _managerE.Update(_stateE); }
+            while (_treeE.TickCount == 0) { _treeE.Update(_stateE); }
         }
 
         public void SetupDynamicSequence()
         {
-            _managerF = new CoroutineManager();
-            var root = new Sequence {Manager = _managerF};
+            var root = new Sequence();
 
-            var conditionalA = new TestDynamicConditionNode(_managerF) {Conditional = s => s.A};
-            var conditionalB = new TestDynamicYieldConditionNode(_managerF) {Conditional = s => s.B};
-            var conditionalC = new TestDynamicConditionNode(_managerF) {Conditional = s => s.C};
+            var conditionalA = new TestDynamicConditionNode {Conditional = s => s.A};
+            var conditionalB = new TestDynamicYieldConditionNode {Conditional = s => s.B};
+            var conditionalC = new TestDynamicConditionNode {Conditional = s => s.C};
 
             root.Children = new List<Node> {conditionalA, conditionalB, conditionalC};
-            _managerF.Root = root;
+            _treeF = new BehaviourTree(root);
 
             dynamic state = new ExpandoObject();
             state.A = true;
@@ -129,44 +118,43 @@ namespace Yggdrasil.Benchmarks
             state.C = true;
             _dynamicStateA = state;
 
-            _managerF.Initialize();
-            while (_managerF.TickCount == 0) { _managerF.Update(_dynamicStateA); }
+            while (_treeF.TickCount == 0) { _treeF.Update(_dynamicStateA); }
         }
 
         [Benchmark]
         public void BNestedParallel()
         {
-            while (_managerA.TickCount == 1) { _managerA.Update(_stateA); }
+            while (_treeA.TickCount == 1) { _treeA.Update(_stateA); }
         }
 
         [Benchmark]
         public void BParallel()
         {
-            while (_managerB.TickCount == 1) { _managerB.Update(_stateB); }
+            while (_treeB.TickCount == 1) { _treeB.Update(_stateB); }
         }
 
         [Benchmark]
         public void BGenericCoroutine()
         {
-            while (_managerC.TickCount == 1) { _managerC.Update(); }
+            while (_treeC.TickCount == 1) { _treeC.Update(); }
         }
 
         [Benchmark]
         public void BNestedCoroutine()
         {
-            while (_managerD.TickCount == 1) { _managerD.Update(); }
+            while (_treeD.TickCount == 1) { _treeD.Update(); }
         }
 
         [Benchmark]
         public void BSequence()
         {
-            while (_managerE.TickCount == 1) { _managerE.Update(_stateE); }
+            while (_treeE.TickCount == 1) { _treeE.Update(_stateE); }
         }
 
         [Benchmark]
         public void BDynamicSequence()
         {
-            while (_managerF.TickCount == 1) { _managerF.Update(_dynamicStateA); }
+            while (_treeF.TickCount == 1) { _treeF.Update(_dynamicStateA); }
         }
 
         private class State
@@ -183,8 +171,6 @@ namespace Yggdrasil.Benchmarks
         {
             public Func<State, bool> Conditional;
 
-            public TestYieldConditionNode(CoroutineManager manager) { Manager = manager; }
-
             protected override async Coroutine<Result> Tick()
             {
                 await Yield;
@@ -196,8 +182,6 @@ namespace Yggdrasil.Benchmarks
         private class TestRunningConditionNode : Node
         {
             public Func<State, bool> Conditional;
-
-            public TestRunningConditionNode(CoroutineManager manager) { Manager = manager; }
 
             protected override async Coroutine<Result> Tick()
             {
@@ -215,8 +199,6 @@ namespace Yggdrasil.Benchmarks
         {
             public Func<State, bool> Conditional;
 
-            public TestConditionNode(CoroutineManager manager) { Manager = manager; }
-
             protected override Coroutine<Result> Tick()
             {
                 return Conditional((State) State) ? Success : Failure;
@@ -226,8 +208,6 @@ namespace Yggdrasil.Benchmarks
         private class TestNestedConditionNode : Node
         {
             public Func<State, bool> Conditional;
-
-            public TestNestedConditionNode(CoroutineManager manager) { Manager = manager; }
 
             protected override async Coroutine<Result> Tick()
             {
@@ -253,8 +233,6 @@ namespace Yggdrasil.Benchmarks
 
         private class GenericCoroutineTestNode : Node
         {
-            public GenericCoroutineTestNode(CoroutineManager manager) { Manager = manager; }
-
             protected override async Coroutine<Result> Tick()
             {
                 await Yield;
@@ -298,8 +276,6 @@ namespace Yggdrasil.Benchmarks
 
         private class NestedCoroutineTestNode : Node
         {
-            public NestedCoroutineTestNode(CoroutineManager manager) { Manager = manager; }
-
             protected override async Coroutine<Result> Tick()
             {
                 await Yield;
@@ -353,8 +329,6 @@ namespace Yggdrasil.Benchmarks
         {
             public Func<dynamic, bool> Conditional;
 
-            public TestDynamicConditionNode(CoroutineManager manager) { Manager = manager; }
-
             protected override Coroutine<Result> Tick()
             {
                 return Conditional(State) ? Success : Failure;
@@ -364,8 +338,6 @@ namespace Yggdrasil.Benchmarks
         private class TestDynamicYieldConditionNode : Node
         {
             public Func<dynamic, bool> Conditional;
-
-            public TestDynamicYieldConditionNode(CoroutineManager manager) { Manager = manager; }
 
             protected override async Coroutine<Result> Tick()
             {
