@@ -35,7 +35,5 @@ namespace Yggdrasil.Coroutines
     {
         internal static readonly ConcurrentPoolMap<IStateMachineWrapper> SmPool =
             new ConcurrentPoolMap<IStateMachineWrapper>();
-
-        public abstract object GetThreadResult();
     }
 }

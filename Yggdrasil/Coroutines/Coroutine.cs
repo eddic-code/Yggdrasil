@@ -103,19 +103,6 @@ namespace Yggdrasil.Coroutines
             return result;
         }
 
-        public override object GetThreadResult()
-        {
-            if (_isConstant) { return _result; }
-
-            var result = _result;
-
-            _result = default;
-            IsCompleted = false;
-            _pool.Recycle(this);
-
-            return result;
-        }
-
         public void SetResult(T result)
         {
             _result = result;
@@ -132,7 +119,7 @@ namespace Yggdrasil.Coroutines
 
             _stateMachine = null;
 
-            CoroutineManager.CurrentInstance.SetException(exception);
+            CoroutineManagerBase.CurrentInstance.SetException(exception);
         }
 
         public void SetStateMachine(IAsyncStateMachine stateMachine) { }
@@ -150,14 +137,14 @@ namespace Yggdrasil.Coroutines
         public void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter _, ref TStateMachine stateMachine)
             where TAwaiter : INotifyCompletion where TStateMachine : IAsyncStateMachine
         {
-            CoroutineManager.CurrentInstance.AddContinuation(this);
+            CoroutineManagerBase.CurrentInstance.AddContinuation(this);
         }
 
         public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter _,
             ref TStateMachine stateMachine)
             where TAwaiter : ICriticalNotifyCompletion where TStateMachine : IAsyncStateMachine
         {
-            CoroutineManager.CurrentInstance.AddContinuation(this);
+            CoroutineManagerBase.CurrentInstance.AddContinuation(this);
         }
     }
 
@@ -243,7 +230,7 @@ namespace Yggdrasil.Coroutines
 
             _stateMachine = null;
 
-            CoroutineManager.CurrentInstance.SetException(exception);
+            CoroutineManagerBase.CurrentInstance.SetException(exception);
         }
 
         public void SetStateMachine(IAsyncStateMachine stateMachine) { }
@@ -261,24 +248,14 @@ namespace Yggdrasil.Coroutines
         public void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
             where TAwaiter : INotifyCompletion where TStateMachine : IAsyncStateMachine
         {
-            CoroutineManager.CurrentInstance.AddContinuation(this);
+            CoroutineManagerBase.CurrentInstance.AddContinuation(this);
         }
 
         public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter,
             ref TStateMachine stateMachine)
             where TAwaiter : ICriticalNotifyCompletion where TStateMachine : IAsyncStateMachine
         {
-            CoroutineManager.CurrentInstance.AddContinuation(this);
-        }
-
-        public override object GetThreadResult()
-        {
-            if (_isConstant) { return null; }
-
-            IsCompleted = false;
-            _pool.Recycle(this);
-
-            return null;
+            CoroutineManagerBase.CurrentInstance.AddContinuation(this);
         }
     }
 }

@@ -29,26 +29,21 @@
 
 using System;
 using System.Collections.Generic;
-using Yggdrasil.Enums;
-using Yggdrasil.Behaviour;
 
 namespace Yggdrasil.Coroutines
 {
     // The real awaiter.
-    public class CoroutineManager
+    public class CoroutineManager<T> : CoroutineManagerBase
     {
-        [ThreadStatic]
-        internal static CoroutineManager CurrentInstance;
-
-        private readonly Stack<CoroutineThread<Result>> _iterationOpenSet = new Stack<CoroutineThread<Result>>(100);
-        private readonly Stack<CoroutineThread<Result>> _iterationReverseSet = new Stack<CoroutineThread<Result>>(100);
-        private readonly List<CoroutineThread<Result>> _threads = new List<CoroutineThread<Result>>(100);
+        private readonly Stack<CoroutineThread<T>> _iterationOpenSet = new Stack<CoroutineThread<T>>(100);
+        private readonly Stack<CoroutineThread<T>> _iterationReverseSet = new Stack<CoroutineThread<T>>(100);
+        private readonly List<CoroutineThread<T>> _threads = new List<CoroutineThread<T>>(100);
 
         internal readonly Coroutine Yield;
         private int _activeThreadIndex;
-        private CoroutineThread<Result> _mainThread;
+        private CoroutineThread<T> _mainThread;
 
-        private Node _root;
+        private Func<Coroutine<T>> _root;
 
         public CoroutineManager()
         {
@@ -57,20 +52,20 @@ namespace Yggdrasil.Coroutines
 
         public ulong TickCount => _mainThread?.TickCount ?? 0;
 
-        public object Result => _mainThread?.Result;
+        public T Result => _mainThread.Result;
 
-        public Node Root
+        public Func<Coroutine<T>> Root
         {
             get => _root;
             set
             {
                 _root = value;
-                _mainThread = new CoroutineThread<Result>(_root.Execute, true, 0);
+                _mainThread = new CoroutineThread<T>(_root, true, 0);
                 Reset();
             }
         }
 
-        public CoroutineThread<Result> ActiveThread { get; private set; }
+        public CoroutineThread<T> ActiveThread { get; private set; }
 
         public void Update()
         {
@@ -122,6 +117,8 @@ namespace Yggdrasil.Coroutines
             }
 
             if (dependenciesChanged) { ProcessDependencies(); }
+
+            CurrentInstance = null;
         }
 
         public void Reset()
@@ -137,20 +134,12 @@ namespace Yggdrasil.Coroutines
             _activeThreadIndex = 0;
         }
 
-        internal void SetException(Exception exception)
-        {
-            Reset();
-
-            // Temporary throw. Could log exception instead and continue.
-            throw exception;
-        }
-
-        internal void ProcessThread(CoroutineThread<Result> thread)
+        internal void ProcessThread(CoroutineThread<T> thread)
         {
             _threads.Add(thread);
         }
 
-        internal void ProcessThreadAsDependency(CoroutineThread<Result> thread)
+        internal void ProcessThreadAsDependency(CoroutineThread<T> thread)
         {
             _threads.Add(thread);
             thread.OutputDependencies.Add(ActiveThread);
@@ -159,7 +148,7 @@ namespace Yggdrasil.Coroutines
             ActiveThread.DependenciesFinished = false;
         }
 
-        internal void TerminateThreadAndDependencies(CoroutineThread<Result> thread)
+        internal void TerminateThreadAndDependencies(CoroutineThread<T> thread)
         {
             // All threads below this one must also be terminated.
             // We iterate inbound dependencies from bottom up.
@@ -173,16 +162,13 @@ namespace Yggdrasil.Coroutines
                 var next = _iterationOpenSet.Pop();
                 _iterationReverseSet.Push(next);
 
-                foreach (var dependency in next.InputDependencies)
-                {
-                    _iterationOpenSet.Push(dependency);
-                }
+                foreach (var dependency in next.InputDependencies) { _iterationOpenSet.Push(dependency); }
             }
 
             while (_iterationReverseSet.Count > 0)
             {
                 var t = _iterationReverseSet.Pop();
-                
+
                 t.Reset();
                 if (!_threads.Contains(t)) { continue; }
 
@@ -194,11 +180,20 @@ namespace Yggdrasil.Coroutines
 
                 // Adjust the active thread index if necessary.
                 if (index <= 0) { continue; }
+
                 if (index < _activeThreadIndex) { _activeThreadIndex -= 1; }
             }
         }
 
-        internal void AddContinuation(IContinuation continuation)
+        internal override void SetException(Exception exception)
+        {
+            Reset();
+
+            // Temporary throw. Could log exception instead and continue.
+            throw exception;
+        }
+
+        internal override void AddContinuation(IContinuation continuation)
         {
             ActiveThread.AddContinuation(continuation);
         }

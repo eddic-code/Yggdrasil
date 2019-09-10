@@ -10,7 +10,7 @@ namespace Yggdrasil.Behaviour
         [ThreadStatic]
         internal static BehaviourTree CurrentInstance;
 
-        private readonly CoroutineManager _manager;
+        private readonly CoroutineManager<Result> _manager;
 
         private readonly Dictionary<CoroutineThread<Result>, Stack<Node>> _providersMap =
             new Dictionary<CoroutineThread<Result>, Stack<Node>>();
@@ -26,8 +26,8 @@ namespace Yggdrasil.Behaviour
             Success = Coroutine<Result>.CreateConst(Result.Success);
             Failure = Coroutine<Result>.CreateConst(Result.Failure);
 
-            _manager = new CoroutineManager();
-            _manager.Root = root;
+            _manager = new CoroutineManager<Result>();
+            _manager.Root = root.Execute;
         }
 
         public Node Root { get; }
@@ -40,16 +40,7 @@ namespace Yggdrasil.Behaviour
 
         public ulong TickCount => _manager.TickCount;
 
-        public Result Result
-        {
-            get
-            {
-                var result = _manager.Result;
-                if (result == null) { return Result.Unknown; }
-
-                return (Result) result;
-            }
-        }
+        public Result Result => _manager.Result;
 
         public void Update(object state = null)
         {
