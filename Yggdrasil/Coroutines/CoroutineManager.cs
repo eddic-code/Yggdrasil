@@ -159,10 +159,30 @@ namespace Yggdrasil.Coroutines
             ActiveThread.DependenciesFinished = false;
         }
 
-        internal void TerminateThread(CoroutineThread thread)
+        internal void TerminateThreadAndDependencies(CoroutineThread thread)
         {
-            foreach (var t in IterateDependenciesBottomUp(thread))
+            // All threads below this one must also be terminated.
+            // We iterate inbound dependencies from bottom up.
+
+            _iterationOpenSet.Clear();
+            _iterationReverseSet.Clear();
+            _iterationOpenSet.Push(thread);
+
+            while (_iterationOpenSet.Count > 0)
             {
+                var next = _iterationOpenSet.Pop();
+                _iterationReverseSet.Push(next);
+
+                foreach (var dependency in next.InputDependencies)
+                {
+                    _iterationOpenSet.Push(dependency);
+                }
+            }
+
+            while (_iterationReverseSet.Count > 0)
+            {
+                var t = _iterationReverseSet.Pop();
+                
                 t.Reset();
                 if (!_threads.Contains(t)) { continue; }
 
@@ -181,31 +201,6 @@ namespace Yggdrasil.Coroutines
         internal void AddContinuation(IContinuation continuation)
         {
             ActiveThread.AddContinuation(continuation);
-        }
-
-        private IEnumerable<CoroutineThread> IterateDependenciesBottomUp(CoroutineThread root)
-        {
-            _iterationOpenSet.Clear();
-            _iterationReverseSet.Clear();
-
-            _iterationOpenSet.Push(root);
-
-            while (_iterationOpenSet.Count > 0)
-            {
-                var next = _iterationOpenSet.Pop();
-                _iterationReverseSet.Push(next);
-
-                foreach (var dependency in next.InputDependencies)
-                {
-                    _iterationOpenSet.Push(dependency);
-                }
-            }
-
-            while (_iterationReverseSet.Count > 0)
-            {
-                var next = _iterationReverseSet.Pop();
-                yield return next;
-            }
         }
 
         private void ProcessDependencies()

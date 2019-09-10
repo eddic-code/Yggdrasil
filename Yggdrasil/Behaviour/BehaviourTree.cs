@@ -104,7 +104,7 @@ namespace Yggdrasil.Behaviour
                 nodes.Clear();
             }
 
-            _manager.TerminateThread(thread);
+            _manager.TerminateThreadAndDependencies(thread);
         }
 
         protected virtual void OnNodeActiveEvent(Node node)

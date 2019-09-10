@@ -7,9 +7,14 @@ namespace Yggdrasil.Benchmarks
     {
         public static void Main(string[] args)
         {
-            BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
+            var benchmark = new ScriptBenchmarks();
 
-            Console.ReadLine();
+            benchmark.Setup();
+            benchmark.Execute();
+
+            //BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
+
+            //Console.ReadLine();
         }
     }
 }
