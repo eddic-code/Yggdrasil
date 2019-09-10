@@ -28,6 +28,7 @@
 #endregion
 
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using System.Xml.Serialization;
 using Yggdrasil.Coroutines;
 using Yggdrasil.Enums;
@@ -96,5 +97,23 @@ namespace Yggdrasil.Behaviour
         protected virtual void Stop() { }
 
         protected abstract Coroutine<Result> Tick();
+
+        protected async Coroutine<TR> RunAsync<TR>(Task<TR> task)
+        {
+            if (task.Status == TaskStatus.Created) { task.Start(); }
+
+            while (!task.IsCompleted && !task.IsCanceled && !task.IsFaulted) { await Yield; }
+
+            // Any exception in the task is thrown, which will then be captured by the coroutine manager.
+            if (task.IsFaulted && task.Exception != null) { throw task.Exception; }
+
+            return task.Result;
+        }
+
+        protected TR RunSync<TR>(Task<TR> task)
+        {
+            task.RunSynchronously();
+            return task.Result;
+        }
     }
 }
