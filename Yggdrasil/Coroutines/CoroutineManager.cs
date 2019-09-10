@@ -40,13 +40,13 @@ namespace Yggdrasil.Coroutines
         [ThreadStatic]
         internal static CoroutineManager CurrentInstance;
 
-        private readonly Stack<CoroutineThread> _iterationOpenSet = new Stack<CoroutineThread>(100);
-        private readonly Stack<CoroutineThread> _iterationReverseSet = new Stack<CoroutineThread>(100);
-        private readonly List<CoroutineThread> _threads = new List<CoroutineThread>(100);
+        private readonly Stack<CoroutineThread<Result>> _iterationOpenSet = new Stack<CoroutineThread<Result>>(100);
+        private readonly Stack<CoroutineThread<Result>> _iterationReverseSet = new Stack<CoroutineThread<Result>>(100);
+        private readonly List<CoroutineThread<Result>> _threads = new List<CoroutineThread<Result>>(100);
 
         internal readonly Coroutine Yield;
         private int _activeThreadIndex;
-        private CoroutineThread _mainThread;
+        private CoroutineThread<Result> _mainThread;
 
         private Node _root;
 
@@ -65,12 +65,12 @@ namespace Yggdrasil.Coroutines
             set
             {
                 _root = value;
-                _mainThread = new CoroutineThread(_root.Execute, true, 0);
+                _mainThread = new CoroutineThread<Result>(_root.Execute, true, 0);
                 Reset();
             }
         }
 
-        public CoroutineThread ActiveThread { get; private set; }
+        public CoroutineThread<Result> ActiveThread { get; private set; }
 
         public void Update()
         {
@@ -145,12 +145,12 @@ namespace Yggdrasil.Coroutines
             throw exception;
         }
 
-        internal void ProcessThread(CoroutineThread thread)
+        internal void ProcessThread(CoroutineThread<Result> thread)
         {
             _threads.Add(thread);
         }
 
-        internal void ProcessThreadAsDependency(CoroutineThread thread)
+        internal void ProcessThreadAsDependency(CoroutineThread<Result> thread)
         {
             _threads.Add(thread);
             thread.OutputDependencies.Add(ActiveThread);
@@ -159,7 +159,7 @@ namespace Yggdrasil.Coroutines
             ActiveThread.DependenciesFinished = false;
         }
 
-        internal void TerminateThreadAndDependencies(CoroutineThread thread)
+        internal void TerminateThreadAndDependencies(CoroutineThread<Result> thread)
         {
             // All threads below this one must also be terminated.
             // We iterate inbound dependencies from bottom up.

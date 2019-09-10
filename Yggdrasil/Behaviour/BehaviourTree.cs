@@ -12,8 +12,8 @@ namespace Yggdrasil.Behaviour
 
         private readonly CoroutineManager _manager;
 
-        private readonly Dictionary<CoroutineThread, Stack<Node>> _providersMap =
-            new Dictionary<CoroutineThread, Stack<Node>>();
+        private readonly Dictionary<CoroutineThread<Result>, Stack<Node>> _providersMap =
+            new Dictionary<CoroutineThread<Result>, Stack<Node>>();
 
         internal Coroutine Yield => _manager.Yield;
         internal readonly Coroutine<Result> Success;
@@ -95,17 +95,17 @@ namespace Yggdrasil.Behaviour
             OnNodeInactiveEvent(node);
         }
 
-        internal void ProcessThread(CoroutineThread thread)
+        internal void ProcessThread(CoroutineThread<Result> thread)
         {
             _manager.ProcessThread(thread);
         }
 
-        internal void ProcessThreadAsDependency(CoroutineThread thread)
+        internal void ProcessThreadAsDependency(CoroutineThread<Result> thread)
         {
             _manager.ProcessThreadAsDependency(thread);
         }
 
-        internal void TerminateThread(CoroutineThread thread)
+        internal void TerminateThread(CoroutineThread<Result> thread)
         {
             if (_providersMap.TryGetValue(thread, out var nodes))
             {

@@ -39,7 +39,7 @@ namespace Yggdrasil.Behaviour
     public class Interrupt : Node
     {
         [XmlIgnore]
-        private readonly List<CoroutineThread> _threads = new List<CoroutineThread>(10);
+        private readonly List<CoroutineThread<Result>> _threads = new List<CoroutineThread<Result>>(10);
 
         public Interrupt(Func<object, bool> conditional)
         {
@@ -63,7 +63,7 @@ namespace Yggdrasil.Behaviour
             {
                 foreach (var n in Children)
                 {
-                    var thread = new CoroutineThread(n.Execute, false, 1);
+                    var thread = new CoroutineThread<Result>(n.Execute, false, 1);
                     _threads.Add(thread);
                 }
             }
@@ -95,8 +95,7 @@ namespace Yggdrasil.Behaviour
 
             foreach (var thread in _threads)
             {
-                var r = thread.Result;
-                if (r != null && ((Result)r) == Result.Success) { result = Result.Success; }
+                if (thread.Result == Result.Success) { result = Result.Success; }
 
                 thread.Reset();
             }
