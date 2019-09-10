@@ -40,11 +40,12 @@ namespace Yggdrasil.Coroutines
         [ThreadStatic]
         internal static CoroutineManager CurrentInstance;
 
+        private readonly Stack<CoroutineThread> _iterationOpenSet = new Stack<CoroutineThread>(100);
+        private readonly Stack<CoroutineThread> _iterationReverseSet = new Stack<CoroutineThread>(100);
         private readonly List<CoroutineThread> _threads = new List<CoroutineThread>(100);
 
         internal readonly Coroutine Yield;
         private int _activeThreadIndex;
-        private bool _initialized;
         private CoroutineThread _mainThread;
 
         private Node _root;
@@ -64,7 +65,6 @@ namespace Yggdrasil.Coroutines
             set
             {
                 _root = value;
-                _initialized = false;
                 _mainThread = new CoroutineThread(value, true, 0);
                 Reset();
             }
@@ -72,38 +72,11 @@ namespace Yggdrasil.Coroutines
 
         public CoroutineThread ActiveThread { get; private set; }
 
-        internal object State { get; private set; }
-
-        public event EventHandler<Node> NodeActiveEventHandler;
-
-        public event EventHandler<Node> NodeInactiveEventHandler;
-
-        public void Initialize()
-        {
-            var open = new Stack<Node>();
-            open.Push(Root);
-
-            while (open.Count > 0)
-            {
-                var next = open.Pop();
-                next.Initialize();
-
-                if (next.Children == null) { continue; }
-
-                foreach (var c in next.Children) { open.Push(c); }
-            }
-
-            _initialized = true;
-        }
-
-        public void Update(object state = null)
+        public void Update()
         {
             if (Root == null) { return; }
 
-            if (!_initialized) { Initialize(); }
-
             CurrentInstance = this;
-            State = state;
 
             _activeThreadIndex = 0;
             ActiveThread = null;
@@ -155,8 +128,11 @@ namespace Yggdrasil.Coroutines
         {
             foreach (var thread in _threads) { thread.Reset(); }
 
-            _threads.Clear();
             _mainThread.Reset();
+            _threads.Clear();
+            _iterationOpenSet.Clear();
+            _iterationReverseSet.Clear();
+
             ActiveThread = null;
             _activeThreadIndex = 0;
         }
@@ -185,22 +161,51 @@ namespace Yggdrasil.Coroutines
 
         internal void TerminateThread(CoroutineThread thread)
         {
-            thread.Reset();
-            if (!_threads.Contains(thread)) { return; }
+            foreach (var t in IterateDependenciesBottomUp(thread))
+            {
+                t.Reset();
+                if (!_threads.Contains(t)) { continue; }
 
-            // The active thread is removed on the tick loop when not running anymore.
-            if (ActiveThread == thread) { return; }
+                // The active thread is removed on the tick loop when not running anymore.
+                if (ActiveThread == t) { continue; }
 
-            var index = _threads.IndexOf(thread);
-            _threads.Remove(thread);
+                var index = _threads.IndexOf(t);
+                _threads.Remove(t);
 
-            // Adjust the active thread index if necessary.
-            if (index < _activeThreadIndex) { _activeThreadIndex -= 1; }
+                // Adjust the active thread index if necessary.
+                if (index <= 0) { continue; }
+                if (index < _activeThreadIndex) { _activeThreadIndex -= 1; }
+            }
         }
 
         internal void AddContinuation(IContinuation continuation)
         {
             ActiveThread.AddContinuation(continuation);
+        }
+
+        private IEnumerable<CoroutineThread> IterateDependenciesBottomUp(CoroutineThread root)
+        {
+            _iterationOpenSet.Clear();
+            _iterationReverseSet.Clear();
+
+            _iterationOpenSet.Push(root);
+
+            while (_iterationOpenSet.Count > 0)
+            {
+                var next = _iterationOpenSet.Pop();
+                _iterationReverseSet.Push(next);
+
+                foreach (var dependency in next.InputDependencies)
+                {
+                    _iterationOpenSet.Push(dependency);
+                }
+            }
+
+            while (_iterationReverseSet.Count > 0)
+            {
+                var next = _iterationReverseSet.Pop();
+                yield return next;
+            }
         }
 
         private void ProcessDependencies()
@@ -254,18 +259,6 @@ namespace Yggdrasil.Coroutines
                 }
             }
             while (dependenciesFinished);
-        }
-
-        protected virtual void OnNodeActiveEvent(Node node)
-        {
-            var handler = NodeActiveEventHandler;
-            handler?.Invoke(this, node);
-        }
-
-        protected virtual void OnNodeInactiveEvent(Node node)
-        {
-            var handler = NodeInactiveEventHandler;
-            handler?.Invoke(this, node);
         }
     }
 }

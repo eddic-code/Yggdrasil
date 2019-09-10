@@ -57,6 +57,21 @@ namespace Yggdrasil.Behaviour
         [XmlIgnore]
         public string Guid { get; set; }
 
+        public IEnumerable<Node> DepthFirstIterate()
+        {
+            var open = new Stack<Node>();
+            open.Push(this);
+
+            while (open.Count > 0)
+            {
+                var next = open.Pop();
+                yield return next;
+
+                if (next.Children == null) { continue; }
+                foreach (var c in next.Children) { open.Push(c); }
+            }
+        }
+
         public async Coroutine<Result> Execute()
         {
             BehaviourTree.CurrentInstance.OnNodeTickStarted(this);

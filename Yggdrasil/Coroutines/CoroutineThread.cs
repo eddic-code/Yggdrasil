@@ -47,8 +47,10 @@ namespace Yggdrasil.Coroutines
             NeverCompletes = neverCompletes;
         }
 
+        // Outbound dependencies are those which need this thread to complete before they can complete.
         internal HashSet<CoroutineThread> OutputDependencies { get; } = new HashSet<CoroutineThread>();
 
+        // Inbound dependencies are those which this thread depends on to complete before itself can complete.
         internal HashSet<CoroutineThread> InputDependencies { get; } = new HashSet<CoroutineThread>();
 
         public Node Root { get; }

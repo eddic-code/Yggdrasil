@@ -14,17 +14,17 @@ namespace Yggdrasil.Tests
         [TestMethod]
         public void SequenceNodeTest()
         {
-            var manager = new CoroutineManager();
             var root = new Sequence();
             var stages = new Queue<string>();
-
-            manager.Root = root;
 
             var conditionalA = new TestConditionNode {Print="A", Stages = stages, Conditional = s => s.A};
             var conditionalB = new TestYieldConditionNode {PrintA="BYield", PrintB="B", Stages = stages, Conditional = s => s.B};
             var conditionalC = new TestConditionNode {Print="C", Stages = stages, Conditional = s => s.C};
 
             root.Children = new List<Node> {conditionalA, conditionalB, conditionalC};
+            foreach (var n in root.DepthFirstIterate()) { n.Initialize(); }
+
+            var manager = new BehaviourTree(root);
 
             Assert.AreEqual(0UL, manager.TickCount);
 
@@ -95,17 +95,16 @@ namespace Yggdrasil.Tests
         [TestMethod]
         public void ConditionNodeTest()
         {
-            var manager = new CoroutineManager();
             var root = new Sequence();
             var stages = new Queue<string>();
-
-            manager.Root = root;
+            var manager = new BehaviourTree(root);
 
             var conditionalA = new TestConditionNode {Print="A", Stages = stages, Conditional = s => s.A};
             var conditionalB = new Condition(s => ((State) s).B);
             var conditionalC = new TestConditionNode {Print="C", Stages = stages, Conditional = s => s.C};
 
             root.Children = new List<Node> {conditionalA, conditionalB, conditionalC};
+            foreach (var n in root.DepthFirstIterate()) { n.Initialize(); }
 
             Assert.AreEqual(0UL, manager.TickCount);
 
@@ -131,17 +130,16 @@ namespace Yggdrasil.Tests
         [TestMethod]
         public void SelectorNodeTest()
         {
-            var manager = new CoroutineManager();
             var root = new Selector();
             var stages = new Queue<string>();
-
-            manager.Root = root;
+            var manager = new BehaviourTree(root);
 
             var conditionalA = new TestConditionNode {Print="A", Stages = stages, Conditional = s => s.A};
             var conditionalB = new TestYieldConditionNode {PrintA="BYield", PrintB="B", Stages = stages, Conditional = s => s.B};
             var conditionalC = new TestConditionNode {Print="C", Stages = stages, Conditional = s => s.C};
 
             root.Children = new List<Node> {conditionalA, conditionalB, conditionalC};
+            foreach (var n in root.DepthFirstIterate()) { n.Initialize(); }
 
             Assert.AreEqual(0UL, manager.TickCount);
 
@@ -216,12 +214,12 @@ namespace Yggdrasil.Tests
         [TestMethod]
         public void InverterNodeTest()
         {
-            var manager = new CoroutineManager();
             var root = new Inverter();
             var stages = new Queue<string>();
+            var manager = new BehaviourTree(root);
 
-            manager.Root = root;
             root.Children.Add(new TestYieldConditionNode() {PrintA="Yield", PrintB="A", Stages = stages, Conditional = s => s.A});
+            foreach (var n in root.DepthFirstIterate()) { n.Initialize(); }
 
             Assert.AreEqual(0UL, manager.TickCount);
 
@@ -267,13 +265,13 @@ namespace Yggdrasil.Tests
         [TestMethod]
         public void FilterNodeTest()
         {
-            var manager = new CoroutineManager();
             var root = new Filter();
             var stages = new Queue<string>();
+            var manager = new BehaviourTree(root);
 
             root.Conditional = s => ((State) s).A;
             root.Children.Add(new TestYieldConditionNode {PrintA="Yield", PrintB="B", Stages = stages, Conditional = s => s.B});
-            manager.Root = root;
+            foreach (var n in root.DepthFirstIterate()) { n.Initialize(); }
 
             Assert.AreEqual(0UL, manager.TickCount);
 
@@ -310,17 +308,16 @@ namespace Yggdrasil.Tests
         [TestMethod]
         public void NestedCoroutinesNodeTest()
         {
-            var manager = new CoroutineManager();
             var root = new Sequence();
             var stages = new Queue<string>();
-
-            manager.Root = root;
+            var manager = new BehaviourTree(root);
 
             var conditionalA = new TestConditionNode {Print="A0", Stages = stages, Conditional = s => s.A};
             var conditionalB = new TestNestedConditionNode {Stages = stages, Conditional = s => s.B};
             var conditionalC = new TestConditionNode {Print="C0", Stages = stages, Conditional = s => s.C};
 
             root.Children = new List<Node> {conditionalA, conditionalB, conditionalC};
+            foreach (var n in root.DepthFirstIterate()) { n.Initialize(); }
 
             Assert.AreEqual(0UL, manager.TickCount);
 
@@ -347,16 +344,16 @@ namespace Yggdrasil.Tests
         [TestMethod]
         public void ParallelNodeTest()
         {
-            var manager = new CoroutineManager();
             var root = new Parallel();
             var stages = new Queue<string>();
+            var manager = new BehaviourTree(root);
 
             var conditionalA = new TestYieldConditionNode {PrintA="AYield", PrintB="A", Stages = stages, Conditional = s => s.A};
             var conditionalB = new TestYieldConditionNode {PrintA="BYield", PrintB="B", Stages = stages, Conditional = s => s.B};
             var conditionalC = new TestYieldConditionNode {PrintA="CYield", PrintB="C", Stages = stages, Conditional = s => s.C};
 
             root.Children = new List<Node> {conditionalA, conditionalB, conditionalC};
-            manager.Root = root;
+            foreach (var n in root.DepthFirstIterate()) { n.Initialize(); }
 
             Assert.AreEqual(0UL, manager.TickCount);
 
@@ -421,15 +418,15 @@ namespace Yggdrasil.Tests
         [TestMethod]
         public void ParallelFilterNodeTest()
         {
-            var manager = new CoroutineManager();
             var root = new Interrupt(s => ((State)s).C);
             var stages = new Queue<string>();
+            var manager = new BehaviourTree(root);
 
             var conditionalA = new TestYieldConditionNode {PrintA="AYield", PrintB="A", Stages = stages, Conditional = s => s.A};
             var conditionalB = new TestYieldConditionNode {PrintA="BYield", PrintB="B", Stages = stages, Conditional = s => s.B};
             
             root.Children = new List<Node> {conditionalA, conditionalB};
-            manager.Root = root;
+            foreach (var n in root.DepthFirstIterate()) { n.Initialize(); }
 
             Assert.AreEqual(0UL, manager.TickCount);
 
@@ -485,7 +482,6 @@ namespace Yggdrasil.Tests
         [TestMethod]
         public void NestedParallelNodeTest()
         {
-            var manager = new CoroutineManager();
             var stages = new Queue<string>();
 
             var parallelA = new Parallel();
@@ -501,14 +497,14 @@ namespace Yggdrasil.Tests
             var conditionalD = new TestYieldConditionNode {PrintA="DYield", PrintB="D", Stages = stages, Conditional = s => s.D};
             var conditionalE = new TestRunningConditionNode {PrintA="E", Stages = stages, Conditional = s => s.E};
 
-            root.Children = new List<Node> {entryCondition, parallelA};
-
             parallelA.Children = new List<Node> {parallelB, parallelC, conditionalA};
             parallelB.Children = new List<Node> {conditionalB, conditionalC};
             parallelC.Children = new List<Node> {conditionalD, conditionalE};
 
-            manager.Root = root;
+            root.Children = new List<Node> {entryCondition, parallelA};
+            foreach (var n in root.DepthFirstIterate()) { n.Initialize(); }
 
+            var manager = new BehaviourTree(root);
             var sequence = new List<string>();
 
             for (var i = 0; i < 2; i++)

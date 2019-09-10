@@ -29,7 +29,6 @@
 
 using System.Collections.Generic;
 using System.Linq;
-using Yggdrasil.Coroutines;
 using Yggdrasil.Behaviour;
 
 namespace Yggdrasil.Scripting
@@ -47,7 +46,7 @@ namespace Yggdrasil.Scripting
 
         public List<ParserNode> ParserNodes { get; set; } = new List<ParserNode>();
 
-        public Node Instantiate(string guid, CoroutineManager manager)
+        public Node Instantiate(string guid)
         {
             var parserNode = ParserNodes.FirstOrDefault(p => p.Guid == guid);
 
@@ -86,6 +85,11 @@ namespace Yggdrasil.Scripting
                     next.Instance.Children.Add(instance);
                     open.Push(c);
                 }
+            }
+
+            foreach (var node in root.DepthFirstIterate())
+            {
+                node?.Initialize();
             }
 
             return root;

@@ -15,7 +15,7 @@ namespace Yggdrasil.Behaviour
         private readonly Dictionary<CoroutineThread, Stack<Node>> _providersMap =
             new Dictionary<CoroutineThread, Stack<Node>>();
 
-        internal readonly Coroutine Yield;
+        internal Coroutine Yield => _manager.Yield;
         internal readonly Coroutine<Result> Success;
         internal readonly Coroutine<Result> Failure;
 
@@ -23,11 +23,11 @@ namespace Yggdrasil.Behaviour
         {
             Root = root;
 
-            Yield = Coroutine.CreateConst(false);
             Success = Coroutine<Result>.CreateConst(Result.Success);
             Failure = Coroutine<Result>.CreateConst(Result.Failure);
 
             _manager = new CoroutineManager();
+            _manager.Root = root;
         }
 
         public Node Root { get; }
@@ -38,21 +38,27 @@ namespace Yggdrasil.Behaviour
 
         public object State { get; private set; }
 
-        public ulong Ticks { get; private set; }
+        public ulong TickCount => _manager.TickCount;
 
-        public void Update(object state)
+        public Result Result => _manager.Result;
+
+        public void Update(object state = null)
         {
             if (Root == null) { return; }
 
             CurrentInstance = this;
             State = state;
+
+            _manager.Update();
+
+            State = null;
+            CurrentInstance = null;
         }
 
         public void Reset()
         {
             _manager.Reset();
 
-            Ticks = 0;
             State = null;
         }
 
