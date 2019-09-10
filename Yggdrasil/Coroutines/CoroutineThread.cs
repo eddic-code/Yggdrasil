@@ -29,13 +29,12 @@
 
 using System.Collections.Generic;
 using Yggdrasil.Enums;
-using Yggdrasil.Nodes;
+using Yggdrasil.Behaviour;
 
 namespace Yggdrasil.Coroutines
 {
     public class CoroutineThread
     {
-        private readonly Stack<Node> _active = new Stack<Node>(100);
         private readonly List<IContinuation> _continuations = new List<IContinuation>(100);
         private readonly Stack<IContinuation> _continuationsBuffer = new Stack<IContinuation>(100);
 
@@ -57,8 +56,6 @@ namespace Yggdrasil.Coroutines
         public ulong TicksToComplete { get; }
 
         public bool NeverCompletes { get; }
-
-        public IEnumerable<Node> ActiveNodes => _active;
 
         internal bool DependenciesFinished { get; set; }
 
@@ -100,14 +97,10 @@ namespace Yggdrasil.Coroutines
 
         public void Reset()
         {
-            foreach (var node in _active) { node.Terminate(); }
-
             IsRunning = false;
             TickCount = 0;
             IsComplete = false;
             Result = Result.Unknown;
-
-            _active.Clear();
 
             foreach (var cont in _continuations) { cont.Discard(); }
 
@@ -120,16 +113,6 @@ namespace Yggdrasil.Coroutines
             InputDependencies.Clear();
             OutputDependencies.Clear();
             DependenciesFinished = false;
-        }
-
-        internal void OnNodeTickStarted(Node node)
-        {
-            _active.Push(node);
-        }
-
-        internal void OnNodeTickFinished()
-        {
-            _active.Pop();
         }
 
         internal void AddContinuation(IContinuation continuation)

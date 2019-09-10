@@ -27,30 +27,24 @@
 
 #endregion
 
-using System;
-using System.Xml.Serialization;
-using Yggdrasil.Attributes;
 using Yggdrasil.Coroutines;
 using Yggdrasil.Enums;
 
-namespace Yggdrasil.Nodes
+namespace Yggdrasil.Behaviour
 {
-    public class Leaf : Node
+    public class Selector : Node
     {
-        [XmlAttribute]
-        public Result Output { get; set; }
-
-        [XmlIgnore]
-        [ScriptedFunction]
-        public Action<object> Function { get; set; } = DefaultFunction;
-
-        protected override Coroutine<Result> Tick()
+        protected override async Coroutine<Result> Tick()
         {
-            Function(State);
+            if (Children == null || Children.Count <= 0) { return Result.Failure; }
 
-            return Output == Result.Success ? Success : Failure;
+            foreach (var child in Children)
+            {
+                var result = await child.Execute();
+                if (result == Result.Success) { return result; }
+            }
+
+            return Result.Failure;
         }
-
-        private static void DefaultFunction(object state) { }
     }
 }

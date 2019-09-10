@@ -28,62 +28,29 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
 using System.Xml.Serialization;
+using Yggdrasil.Attributes;
 using Yggdrasil.Coroutines;
 using Yggdrasil.Enums;
 
-namespace Yggdrasil.Nodes
+namespace Yggdrasil.Behaviour
 {
-    public abstract class Node
+    public class Leaf : Node
     {
-        [ThreadStatic]
-        private static Coroutine<Result> _success, _failure;
+        [XmlAttribute]
+        public Result Output { get; set; }
 
         [XmlIgnore]
-        public CoroutineManager Manager;
+        [ScriptedFunction]
+        public Action<object> Function { get; set; } = DefaultFunction;
 
-        [XmlIgnore]
-        protected Coroutine Yield => Manager.Yield;
-
-        [XmlIgnore]
-        protected static Coroutine<Result> Success => _success ?? (_success = Coroutine<Result>.CreateConst(Result.Success));
-
-        [XmlIgnore]
-        protected static Coroutine<Result> Failure => _failure ?? (_failure = Coroutine<Result>.CreateConst(Result.Failure));
-
-        [XmlIgnore]
-        protected object State => Manager.State;
-
-        [XmlIgnore]
-        public virtual List<Node> Children { get; set; } = new List<Node>();
-
-        [XmlIgnore]
-        public string Guid { get; set; }
-
-        public async Coroutine<Result> Execute()
+        protected override Coroutine<Result> Tick()
         {
-            Manager.OnNodeTickStarted(this);
+            Function(State);
 
-            Start();
-
-            var result = await Tick();
-
-            Stop();
-
-            Manager.OnNodeTickFinished(this);
-
-            return result;
+            return Output == Result.Success ? Success : Failure;
         }
 
-        public virtual void Terminate() { }
-
-        public virtual void Initialize() { }
-
-        protected virtual void Start() { }
-
-        protected virtual void Stop() { }
-
-        protected abstract Coroutine<Result> Tick();
+        private static void DefaultFunction(object state) { }
     }
 }

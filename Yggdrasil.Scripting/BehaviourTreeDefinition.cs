@@ -30,7 +30,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Yggdrasil.Coroutines;
-using Yggdrasil.Nodes;
+using Yggdrasil.Behaviour;
 
 namespace Yggdrasil.Scripting
 {
@@ -60,7 +60,7 @@ namespace Yggdrasil.Scripting
             }
 
             // Uses a depth first loop instead of recursion to avoid potential stack overflows.
-            var root = parserNode.CreateInstance(manager, TypeDefMap, Errors);
+            var root = parserNode.CreateInstance(TypeDefMap, Errors);
             var n = new InstantiationNode {Instance = root, Parser = parserNode};
             var open = new Stack<InstantiationNode>();
 
@@ -76,7 +76,7 @@ namespace Yggdrasil.Scripting
 
                 foreach (var parserChild in children)
                 {
-                    var instance = parserChild.CreateInstance(manager, TypeDefMap, Errors);
+                    var instance = parserChild.CreateInstance(TypeDefMap, Errors);
                     if (instance == null) { continue; }
 
                     var c = new InstantiationNode {Instance = instance, Parser = parserChild};

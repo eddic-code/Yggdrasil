@@ -27,33 +27,59 @@
 
 #endregion
 
+using System.Collections.Generic;
 using System.Xml.Serialization;
 using Yggdrasil.Coroutines;
 using Yggdrasil.Enums;
 
-namespace Yggdrasil.Nodes
+namespace Yggdrasil.Behaviour
 {
-    public class Inverter : Node
+    public abstract class Node
     {
+        // References to the thread static behaviour tree instance to keep node instances stateless.
+        // Behaviour tree static instance is always the one being currently updated.
+
         [XmlIgnore]
-        public Node Child
-        {
-            get
-            {
-                if (Children == null || Children.Count <= 0) { return null; }
+        protected Coroutine Yield => BehaviourTree.CurrentInstance.Yield;
 
-                return Children[0];
-            }
+        [XmlIgnore]
+        protected Coroutine<Result> Success => BehaviourTree.CurrentInstance.Success;
+
+        [XmlIgnore]
+        protected static Coroutine<Result> Failure => BehaviourTree.CurrentInstance.Failure;
+
+        [XmlIgnore]
+        protected object State => BehaviourTree.CurrentInstance.State;
+
+        [XmlIgnore]
+        public virtual List<Node> Children { get; set; } = new List<Node>();
+
+        [XmlIgnore]
+        public string Guid { get; set; }
+
+        public async Coroutine<Result> Execute()
+        {
+            BehaviourTree.CurrentInstance.OnNodeTickStarted(this);
+
+            Start();
+
+            var result = await Tick();
+
+            Stop();
+
+            BehaviourTree.CurrentInstance.OnNodeTickFinished(this);
+
+            return result;
         }
 
-        protected override async Coroutine<Result> Tick()
-        {
-            if (Child == null) { return Result.Failure; }
+        public virtual void Terminate() { }
 
-            var result = await Child.Execute();
-            if (result == Result.Unknown) { return result; }
+        public virtual void Initialize() { }
 
-            return result == Result.Success ? Result.Failure : Result.Success;
-        }
+        protected virtual void Start() { }
+
+        protected virtual void Stop() { }
+
+        protected abstract Coroutine<Result> Tick();
     }
 }

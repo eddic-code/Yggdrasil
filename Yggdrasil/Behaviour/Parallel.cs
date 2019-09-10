@@ -27,30 +27,17 @@
 
 #endregion
 
-using System;
 using System.Collections.Generic;
 using System.Xml.Serialization;
-using Yggdrasil.Attributes;
 using Yggdrasil.Coroutines;
 using Yggdrasil.Enums;
 
-namespace Yggdrasil.Nodes
+namespace Yggdrasil.Behaviour
 {
-    public class Interrupt : Node
+    public class Parallel : Node
     {
         [XmlIgnore]
         private readonly List<CoroutineThread> _threads = new List<CoroutineThread>(10);
-
-        public Interrupt(Func<object, bool> conditional)
-        {
-            Conditional = conditional;
-        }
-
-        public Interrupt() { }
-
-        [XmlIgnore]
-        [ScriptedFunction]
-        public Func<object, bool> Conditional { get; set; } = DefaultConditional;
 
         public override void Terminate()
         {
@@ -71,25 +58,9 @@ namespace Yggdrasil.Nodes
 
         protected override async Coroutine<Result> Tick()
         {
-            if (!Conditional(State)) { return Result.Failure; }
+            foreach (var thread in _threads) { BehaviourTree.CurrentInstance.ProcessThreadAsDependency(thread); }
 
-            foreach (var thread in _threads)
-            {
-                thread.Reset();
-                Manager.ProcessThreadAsDependency(thread);
-            }
-
-            while (Continue())
-            {
-                await Yield;
-
-                if (!Conditional(State))
-                {
-                    foreach (var thread in _threads) { Manager.TerminateThread(thread); }
-
-                    return Result.Failure;
-                }
-            }
+            while (Continue()) { await Yield; }
 
             var result = Result.Failure;
 
@@ -109,11 +80,6 @@ namespace Yggdrasil.Nodes
             foreach (var thread in _threads) { processing = processing || !thread.IsComplete; }
 
             return processing;
-        }
-
-        private static bool DefaultConditional(object s)
-        {
-            return true;
         }
     }
 }

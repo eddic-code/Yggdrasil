@@ -6,7 +6,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Yggdrasil.Attributes;
 using Yggdrasil.Coroutines;
 using Yggdrasil.Enums;
-using Yggdrasil.Nodes;
+using Yggdrasil.Behaviour;
 using Yggdrasil.Scripting;
 
 namespace Yggdrasil.Tests

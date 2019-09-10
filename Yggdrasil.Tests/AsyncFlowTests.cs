@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Yggdrasil.Coroutines;
 using Yggdrasil.Enums;
-using Yggdrasil.Nodes;
+using Yggdrasil.Behaviour;
 
 namespace Yggdrasil.Tests
 {
@@ -14,7 +14,7 @@ namespace Yggdrasil.Tests
         public void ContinuationOrderTest()
         {
             var manager = new CoroutineManager();
-            var node = new TestNode(manager);
+            var node = new TestNode();
             var stages = new Queue<string>();
 
             node.Stages = stages;
@@ -48,8 +48,6 @@ namespace Yggdrasil.Tests
         private class TestNode : Node
         {
             public Queue<string> Stages;
-
-            public TestNode(CoroutineManager manager) { Manager = manager; }
 
             protected override async Coroutine<Result> Tick()
             {
@@ -98,7 +96,7 @@ namespace Yggdrasil.Tests
         public void NestedCoroutinesTest()
         {
             var manager = new CoroutineManager();
-            var node = new NestedCoroutinesTestNode(manager);
+            var node = new NestedCoroutinesTestNode();
             var stages = new Queue<string>();
 
             node.Stages = stages;
@@ -132,8 +130,6 @@ namespace Yggdrasil.Tests
         private class NestedCoroutinesTestNode : Node
         {
             public Queue<string> Stages;
-
-            public NestedCoroutinesTestNode(CoroutineManager manager) { Manager = manager; }
 
             protected override async Coroutine<Result> Tick()
             {
@@ -183,7 +179,7 @@ namespace Yggdrasil.Tests
         public void ContinuationLoopTest()
         {
             var manager = new CoroutineManager();
-            var node = new LoopTestNode(manager);
+            var node = new LoopTestNode();
             var stages = new Queue<string>();
 
             node.Stages = stages;
@@ -253,8 +249,6 @@ namespace Yggdrasil.Tests
         private class LoopTestNode : Node
         {
             public Queue<string> Stages;
-
-            public LoopTestNode(CoroutineManager manager) { Manager = manager; }
 
             protected override async Coroutine<Result> Tick()
             {

@@ -3,7 +3,7 @@ using System.Xml.Serialization;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Yggdrasil.Coroutines;
 using Yggdrasil.Enums;
-using Yggdrasil.Nodes;
+using Yggdrasil.Behaviour;
 using Yggdrasil.Scripting;
 
 namespace Yggdrasil.Tests
