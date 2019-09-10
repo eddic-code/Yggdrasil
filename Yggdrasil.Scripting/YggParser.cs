@@ -51,9 +51,9 @@ namespace Yggdrasil.Scripting
         private static readonly Regex _innerClosing = new Regex("[\\s\n\r]*`[\\s\n\r]*<", RegexOptions.Compiled);
         private static readonly Regex _attributeOpening = new Regex("=[\\s\n\r]*`[\\s\n\r]*", RegexOptions.Compiled);
         private static readonly Regex _attributeClosing = new Regex("[\\s\n\r]*`", RegexOptions.Compiled);
+        private readonly IScriptCompiler _compiler;
 
         private readonly YggParserConfig _config;
-        private readonly IScriptCompiler _compiler;
 
         public YggParser(YggParserConfig config, IScriptCompiler compiler)
         {
@@ -106,7 +106,8 @@ namespace Yggdrasil.Scripting
             if (functionDefinitions == null) { return context; }
 
             // Compile scripted functions.
-            context.Compilation = _compiler.Compile<TState>(_config.ScriptNamespaces, _config.ReferenceAssemblyPaths, functionDefinitions);
+            context.Compilation = _compiler.Compile<TState>(_config.ScriptNamespaces, _config.ReferenceAssemblyPaths,
+                functionDefinitions);
             context.Errors.AddRange(context.Compilation.Errors);
             if (context.Errors.Any(e => e.IsCritical)) { return context; }
 
@@ -114,6 +115,7 @@ namespace Yggdrasil.Scripting
             foreach (var parserNode in context.ParserNodes)
             {
                 if (!context.Compilation.GuidFunctionMap.TryGetValue(parserNode.Guid, out var functions)) { continue; }
+
                 parserNode.ScriptedFunctions = functions;
             }
 
@@ -244,8 +246,10 @@ namespace Yggdrasil.Scripting
                 var innerText = match.Groups[1].Value;
                 var cleanText = matchText;
 
-                if (_innerOpening.IsMatch(cleanText)) cleanText = _innerOpening.Replace(cleanText, ">");
-                if (_innerClosing.IsMatch(cleanText)) cleanText = _innerClosing.Replace(cleanText, "<");
+                if (_innerOpening.IsMatch(cleanText)) { cleanText = _innerOpening.Replace(cleanText, ">"); }
+
+                if (_innerClosing.IsMatch(cleanText)) { cleanText = _innerClosing.Replace(cleanText, "<"); }
+
                 if (_attributeOpening.IsMatch(cleanText))
                 {
                     cleanText = _attributeOpening.Replace(cleanText, "=\"");
@@ -383,7 +387,8 @@ namespace Yggdrasil.Scripting
             return true;
         }
 
-        private List<ScriptedFunctionDefinition> GetFunctionDefinitions(List<ParserNode> parserNodes, HashSet<string> nodeTypeTags)
+        private List<ScriptedFunctionDefinition> GetFunctionDefinitions(List<ParserNode> parserNodes,
+            HashSet<string> nodeTypeTags)
         {
             var functionDefinitions = new List<ScriptedFunctionDefinition>();
 
@@ -399,8 +404,8 @@ namespace Yggdrasil.Scripting
                 {
                     var functionAttribute = GetAttribute(parserNode.Xml, property.Name);
 
-                    var functionElement = nodeTypeTags.Contains(property.Name) 
-                        ? null 
+                    var functionElement = nodeTypeTags.Contains(property.Name)
+                        ? null
                         : GetChildren(parserNode.Xml).FirstOrDefault(n => n.Name == property.Name);
 
                     string functionText;

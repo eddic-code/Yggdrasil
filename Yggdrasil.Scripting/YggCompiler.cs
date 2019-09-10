@@ -52,7 +52,8 @@ namespace Yggdrasil.Scripting
 
         private static readonly string[] _invalidFunctionCharacters = {"-", ";", ".", ",", " ", "\n", "\r"};
 
-        public YggCompilation Compile<TState>(IEnumerable<string> namespaces, IEnumerable<string> referenceAssemblyPaths, 
+        public YggCompilation Compile<TState>(IEnumerable<string> namespaces,
+            IEnumerable<string> referenceAssemblyPaths,
             List<ScriptedFunctionDefinition> definitions)
         {
             var compilation = new YggCompilation();
@@ -64,6 +65,7 @@ namespace Yggdrasil.Scripting
             if (definitions.Any(d => d.ReplaceObjectWithDynamic)) { usings.Add("using System.Dynamic;"); }
 
             foreach (var u in usings) { builderClassText.Append(u); }
+
             builderClassText.Append("public class FunctionBuilder\n{");
 
             foreach (var definition in definitions)
@@ -82,10 +84,7 @@ namespace Yggdrasil.Scripting
                 functions.Add(sf);
                 builderClassText.Append(sf.ScriptText);
 
-                foreach (var reference in sf.References)
-                {
-                    referencePaths.Add(reference);
-                }
+                foreach (var reference in sf.References) { referencePaths.Add(reference); }
             }
 
             builderClassText.Append("\n}");
@@ -116,6 +115,7 @@ namespace Yggdrasil.Scripting
                 {
                     var error = new BuildError {Message = "Emit compilation error.", IsCritical = true};
                     foreach (var diag in emitResult.Diagnostics) { error.Diagnostics.Add(diag); }
+
                     compilation.Errors.Add(error);
                     return compilation;
                 }
@@ -136,7 +136,7 @@ namespace Yggdrasil.Scripting
             return compilation;
         }
 
-        private static ScriptedFunction CreateScriptedFunction<TState>(string guid, PropertyInfo property, 
+        private static ScriptedFunction CreateScriptedFunction<TState>(string guid, PropertyInfo property,
             string functionText, bool replaceObjectWithDynamic, List<BuildError> errors)
         {
             var propertyName = property.Name;
@@ -177,6 +177,7 @@ namespace Yggdrasil.Scripting
             // References.
             sf.References.Add(stateType.GetTypeInfo().Assembly.Location);
             if (firstGenericType != null) { sf.References.Add(firstGenericType.GetTypeInfo().Assembly.Location); }
+
             if (secondGenericType != null) { sf.References.Add(secondGenericType.GetTypeInfo().Assembly.Location); }
 
             if (replaceObjectWithDynamic)
@@ -185,6 +186,7 @@ namespace Yggdrasil.Scripting
                 sf.References.Add(typeof(DynamicAttribute).GetTypeInfo().Assembly.Location);
 
                 if (firstGenericName != null && firstGenericType == typeof(object)) { firstGenericName = "dynamic"; }
+
                 if (secondGenericName != null && secondGenericType == typeof(object)) { secondGenericName = "dynamic"; }
             }
 
@@ -193,7 +195,7 @@ namespace Yggdrasil.Scripting
             {
                 sf.ScriptText = isSameType
                     ? $@"public static void {functionName}({firstGenericName} state) {{ {functionText}; }} 
-                         public System.Action<{firstGenericName}> {builderName}() {{ return {functionName}; }} " 
+                         public System.Action<{firstGenericName}> {builderName}() {{ return {functionName}; }} "
                     : $@"public static void {functionName}({firstGenericName} baseState) {{ var state = ({stateTypeName})baseState; {functionText}; }} 
                          public System.Action<{firstGenericName}> {builderName}() {{ return {functionName}; }} ";
 
@@ -203,7 +205,8 @@ namespace Yggdrasil.Scripting
             // Function with single generic.
             if (functionType.IsGenericType && genericTypeDefinition == typeof(Func<>))
             {
-                sf.ScriptText = $@"public static {firstGenericName} {functionName}() {{ {returnOpenText}{functionText}{returnCloseText} }} 
+                sf.ScriptText =
+                    $@"public static {firstGenericName} {functionName}() {{ {returnOpenText}{functionText}{returnCloseText} }} 
                                    public System.Func<{firstGenericName}> {builderName}() {{ return {functionName}; }}";
 
                 return sf;
@@ -214,7 +217,7 @@ namespace Yggdrasil.Scripting
             {
                 sf.ScriptText = isSameType
                     ? $@"public static {secondGenericName} {functionName}({firstGenericName} state) {{ {returnOpenText}{functionText}{returnCloseText} }} 
-                         public System.Func<{firstGenericName}, {secondGenericName}> {builderName}() {{ return {functionName}; }}" 
+                         public System.Func<{firstGenericName}, {secondGenericName}> {builderName}() {{ return {functionName}; }}"
                     : $@"public static {secondGenericName} {functionName}({firstGenericName} baseState) {{ var state = ({stateTypeName})baseState; {returnOpenText}{functionText}{returnCloseText} }} 
                          public System.Func<{firstGenericName}, {secondGenericName}> {builderName}() {{ return {functionName}; }}";
 
