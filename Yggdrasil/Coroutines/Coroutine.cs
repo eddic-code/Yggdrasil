@@ -36,7 +36,7 @@ namespace Yggdrasil.Coroutines
     [AsyncMethodBuilder(typeof(Coroutine<>))]
     public class Coroutine<T> : CoroutineBase, ICriticalNotifyCompletion, IContinuation
     {
-        private static readonly ConcurrentPool<Coroutine<T>> _pool = new ConcurrentPool<Coroutine<T>>();
+        public static readonly ConcurrentPool<Coroutine<T>> Pool = new ConcurrentPool<Coroutine<T>>();
 
         private bool _isConstant;
         private T _result;
@@ -62,7 +62,7 @@ namespace Yggdrasil.Coroutines
 
             _stateMachine = null;
 
-            _pool.Recycle(this);
+            Pool.Recycle(this);
         }
 
         public void OnCompleted(Action continuation) { }
@@ -71,12 +71,12 @@ namespace Yggdrasil.Coroutines
 
         public static Coroutine<T> Create()
         {
-            return _pool.Get();
+            return Pool.Get();
         }
 
         public static Coroutine<T> CreateConst(T result)
         {
-            var coroutine = _pool.Get();
+            var coroutine = Pool.Get();
 
             coroutine._result = result;
             coroutine.IsCompleted = true;
@@ -98,7 +98,7 @@ namespace Yggdrasil.Coroutines
 
             _result = default;
             IsCompleted = false;
-            _pool.Recycle(this);
+            Pool.Recycle(this);
 
             return result;
         }
@@ -151,7 +151,7 @@ namespace Yggdrasil.Coroutines
     [AsyncMethodBuilder(typeof(Coroutine))]
     public class Coroutine : CoroutineBase, ICriticalNotifyCompletion, IContinuation
     {
-        private static readonly ConcurrentPool<Coroutine> _pool = new ConcurrentPool<Coroutine>();
+        public static readonly ConcurrentPool<Coroutine> Pool = new ConcurrentPool<Coroutine>();
 
         private bool _isConstant;
         private IStateMachineWrapper _stateMachine;
@@ -175,7 +175,7 @@ namespace Yggdrasil.Coroutines
 
             _stateMachine = null;
 
-            _pool.Recycle(this);
+            Pool.Recycle(this);
         }
 
         public void OnCompleted(Action continuation) { }
@@ -184,12 +184,12 @@ namespace Yggdrasil.Coroutines
 
         public static Coroutine Create()
         {
-            return _pool.Get();
+            return Pool.Get();
         }
 
         public static Coroutine CreateConst(bool isCompleted)
         {
-            var coroutine = _pool.Get();
+            var coroutine = Pool.Get();
 
             coroutine.IsCompleted = isCompleted;
             coroutine._isConstant = true;
@@ -207,7 +207,7 @@ namespace Yggdrasil.Coroutines
             if (_isConstant) { return null; }
 
             IsCompleted = false;
-            _pool.Recycle(this);
+            Pool.Recycle(this);
 
             return null;
         }
