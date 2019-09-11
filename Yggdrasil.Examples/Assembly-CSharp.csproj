@@ -62,8 +62,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Assets\Example - Compilation\Scripts\ExampleCompilationEntry.cs" />
-    <Compile Include="Assets\Example - Compilation\Scripts\ExampleCompilationState.cs" />
+    <Compile Include="Assets\Scripts\ExampleCustomAction.cs" />
+    <Compile Include="Assets\Scripts\ExampleScriptLoader.cs" />
+    <Compile Include="Assets\Scripts\ExampleState.cs" />
     <Reference Include="Unity.VSCode.Editor">
       <HintPath>C:/Users/Hans Dieter/Documents/Development/Yggdrasil/Yggdrasil.Examples/Library/ScriptAssemblies/Unity.VSCode.Editor.dll</HintPath>
     </Reference>
@@ -285,9 +286,6 @@
     </Reference>
     <Reference Include="System.Threading.Tasks.Extensions">
       <HintPath>C:/Users/Hans Dieter/Documents/Development/Yggdrasil/Yggdrasil.Examples/Assets/Libraries/System.Threading.Tasks.Extensions.dll</HintPath>
-    </Reference>
-    <Reference Include="Yggdrasil.ScriptTypes">
-      <HintPath>C:/Users/Hans Dieter/Documents/Development/Yggdrasil/Yggdrasil.Examples/Assets/Libraries/Yggdrasil.ScriptTypes.dll</HintPath>
     </Reference>
     <Reference Include="Yggdrasil">
       <HintPath>C:/Users/Hans Dieter/Documents/Development/Yggdrasil/Yggdrasil.Examples/Assets/Libraries/Yggdrasil.dll</HintPath>

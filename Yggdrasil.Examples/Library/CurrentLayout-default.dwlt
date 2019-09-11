@@ -96,10 +96,10 @@ MonoBehaviour:
     y: 0
     width: 800
     height: 769
-  m_MinSize: {x: 204, y: 322}
-  m_MaxSize: {x: 4004, y: 8022}
+  m_MinSize: {x: 204, y: 344}
+  m_MaxSize: {x: 4004, y: 8044}
   vertical: 1
-  controlID: 80
+  controlID: 79
 --- !u!114 &5
 MonoBehaviour:
   m_ObjectHideFlags: 52
@@ -121,10 +121,10 @@ MonoBehaviour:
     y: 30
     width: 1603
     height: 769
-  m_MinSize: {x: 911, y: 322}
-  m_MaxSize: {x: 22006, y: 10022}
+  m_MinSize: {x: 919, y: 344}
+  m_MaxSize: {x: 22014, y: 10022}
   vertical: 0
-  controlID: 78
+  controlID: 77
 --- !u!114 &6
 MonoBehaviour:
   m_ObjectHideFlags: 52
@@ -144,8 +144,8 @@ MonoBehaviour:
     y: 0
     width: 325
     height: 769
-  m_MinSize: {x: 275, y: 50}
-  m_MaxSize: {x: 4000, y: 4000}
+  m_MinSize: {x: 279, y: 72}
+  m_MaxSize: {x: 4004, y: 4022}
   m_ActualView: {fileID: 14}
   m_Panes:
   - {fileID: 14}
@@ -266,10 +266,10 @@ MonoBehaviour:
     y: 0
     width: 1278
     height: 769
-  m_MinSize: {x: 636, y: 322}
-  m_MaxSize: {x: 18006, y: 10022}
+  m_MinSize: {x: 640, y: 344}
+  m_MaxSize: {x: 18010, y: 10022}
   vertical: 0
-  controlID: 79
+  controlID: 78
 --- !u!114 &12
 MonoBehaviour:
   m_ObjectHideFlags: 52
@@ -289,8 +289,8 @@ MonoBehaviour:
     y: 0
     width: 800
     height: 438
-  m_MinSize: {x: 200, y: 200}
-  m_MaxSize: {x: 4000, y: 4000}
+  m_MinSize: {x: 204, y: 222}
+  m_MaxSize: {x: 4004, y: 4022}
   m_ActualView: {fileID: 16}
   m_Panes:
   - {fileID: 16}
@@ -347,7 +347,7 @@ MonoBehaviour:
     scrollPos: {x: 0, y: 0}
     m_SelectedIDs: 6e5c0000
     m_LastClickedID: 23662
-    m_ExpandedIDs: 000000000e2600004026000016270000182700001a270000
+    m_ExpandedIDs: 000000006a2600006e2700007027000072270000
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -375,7 +375,7 @@ MonoBehaviour:
     scrollPos: {x: 0, y: 0}
     m_SelectedIDs: 
     m_LastClickedID: 0
-    m_ExpandedIDs: ffffffff000000000e26000016270000182700001a270000
+    m_ExpandedIDs: ffffffff000000006a2600009e2600006e270000702700007227000090270000
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -498,7 +498,7 @@ MonoBehaviour:
       scrollPos: {x: 0, y: 0}
       m_SelectedIDs: 
       m_LastClickedID: 0
-      m_ExpandedIDs: 7efbffff
+      m_ExpandedIDs: 66fbffff
       m_RenameOverlay:
         m_UserAcceptedRename: 0
         m_Name: 

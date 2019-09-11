@@ -29,7 +29,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace Yggdrasil.Coroutines
 {
@@ -190,7 +189,7 @@ namespace Yggdrasil.Coroutines
         {
             Reset();
 
-            // Temporary throw. Could log exception instead and continue.
+            // Temporary throw. Could pass exception up for logging purposes instead and continue.
             throw exception;
         }
 

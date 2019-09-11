@@ -31,9 +31,13 @@ using System.Collections.Concurrent;
 
 namespace Yggdrasil.Utility
 {
+    // Trying to avoid having to use locks. The pool size can still go above maximum
+    // from race conditions.
+
     public class ConcurrentPool<T> where T : class, new()
     {
         public volatile int MaxPoolCount = int.MaxValue - 100;
+
         private readonly ConcurrentQueue<T> _queue = new ConcurrentQueue<T>();
 
         public int Count => _queue.Count;
