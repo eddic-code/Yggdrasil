@@ -37,6 +37,9 @@ namespace Yggdrasil.Behaviour
 {
     public abstract class Node
     {
+        [XmlIgnore]
+        private string _nodeType;
+
         // References to the thread static behaviour tree instance to keep node instances stateless.
         // Behaviour tree static instance is always the one being currently updated.
 
@@ -57,6 +60,13 @@ namespace Yggdrasil.Behaviour
 
         [XmlIgnore]
         public string Guid { get; set; }
+
+        [XmlIgnore]
+        public string NodeType
+        {
+            get => _nodeType ?? GetType().Name;
+            set => _nodeType = value;
+        }
 
         public IEnumerable<Node> DepthFirstIterate()
         {

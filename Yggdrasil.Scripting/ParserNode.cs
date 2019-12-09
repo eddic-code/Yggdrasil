@@ -73,6 +73,7 @@ namespace Yggdrasil.Scripting
 
             // Set manager and guid.
             instance.Guid = Guid;
+            instance.NodeType = Tag;
 
             // Set function values.
             foreach (var function in ScriptedFunctions) { function.SetFunctionPropertyValue(instance); }
